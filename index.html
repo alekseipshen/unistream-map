@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ЮНИСТРИМ — обменные пункты у метро</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffd400'/><text x='50' y='72' font-size='60' text-anchor='middle' font-family='Arial' font-weight='bold' fill='%231a3e8c'>Ю</text></svg>">
+<style>
+  :root {
+    --blue: #1a3e8c; --blue-dark: #12295e; --yellow: #ffd400;
+    --bg: #f2f4f8; --card: #ffffff; --line: #dfe4ec;
+    --ok: #178a3c; --closed: #c62828; --muted: #67707f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font: 16px/1.45 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg); color: #1c2330;
+  }
+  header {
+    background: var(--blue); color: #fff;
+    padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  header .logo {
+    background: var(--yellow); color: var(--blue); font-weight: 800;
+    border-radius: 8px; padding: 3px 10px; font-size: 18px; letter-spacing: .5px;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  header .rates-status { margin-left: auto; font-size: 13px; opacity: .85; }
+  header .rates-status button {
+    margin-left: 8px; border: 1px solid rgba(255,255,255,.5); background: transparent;
+    color: #fff; border-radius: 6px; padding: 3px 10px; font-size: 13px; cursor: pointer;
+  }
+  header .rates-status button:hover { background: rgba(255,255,255,.15); }
+
+  .searchwrap { position: relative; padding: 12px 16px; background: var(--blue-dark); }
+  #q {
+    width: 100%; font-size: 20px; padding: 12px 44px 12px 14px;
+    border: 2px solid transparent; border-radius: 10px; outline: none;
+  }
+  #q:focus { border-color: var(--yellow); }
+  #clearq {
+    position: absolute; right: 26px; top: 50%; transform: translateY(-50%);
+    border: 0; background: transparent; font-size: 22px; color: #888; cursor: pointer;
+    display: none; line-height: 1; padding: 4px;
+  }
+  .suggest {
+    position: absolute; left: 16px; right: 16px; top: calc(100% - 6px); z-index: 1200;
+    background: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    max-height: 46vh; overflow-y: auto; display: none;
+  }
+  .suggest div {
+    padding: 11px 14px; cursor: pointer; display: flex; align-items: center; gap: 9px;
+    border-bottom: 1px solid var(--line); font-size: 17px;
+  }
+  .suggest div:last-child { border-bottom: 0; }
+  .suggest div.active, .suggest div:hover { background: #eef3ff; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 12px; }
+
+  .layout { display: flex; height: calc(100vh - 118px); }
+  .panel { width: 460px; min-width: 340px; overflow-y: auto; padding: 12px; }
+  #map { flex: 1; min-height: 200px; }
+
+  .hint { color: var(--muted); font-size: 14px; margin: 4px 2px 10px; }
+  .station-head {
+    background: var(--card); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px; border: 1px solid var(--line);
+  }
+  .station-head b { font-size: 18px; }
+  .station-head .lines { display: flex; gap: 5px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 12px; cursor: pointer;
+    transition: box-shadow .15s;
+  }
+  .card:hover { box-shadow: 0 4px 14px rgba(20,40,90,.12); }
+  .card.selected { border: 2px solid var(--blue); }
+  .card .toprow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card .num {
+    background: var(--yellow); color: var(--blue); font-weight: 800; font-size: 19px;
+    border-radius: 8px; padding: 2px 10px;
+  }
+  .badge { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
+  .badge.open { color: var(--ok); background: #e2f4e8; }
+  .badge.closed { color: var(--closed); background: #fbe4e4; }
+  .walk { margin-left: auto; font-weight: 700; color: var(--blue); font-size: 15px; white-space: nowrap; }
+  .card .addr { margin: 8px 0 2px; font-size: 16px; }
+  .card .metro-tags { margin: 4px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .mtag {
+    font-size: 13px; background: #eef1f7; border-radius: 6px; padding: 2px 8px; color: #333;
+  }
+  .mtag::before { content: "Ⓜ "; color: #d21f26; font-weight: 700; }
+  .kv { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .kv b { color: #1c2330; font-weight: 600; }
+  details.howto { margin-top: 6px; font-size: 14px; }
+  details.howto summary { cursor: pointer; color: var(--blue); font-weight: 600; }
+  details.howto p { margin: 6px 0 0; color: #333; white-space: pre-line; }
+
+  table.rates { border-collapse: collapse; margin-top: 8px; width: 100%; max-width: 340px; }
+  table.rates th, table.rates td {
+    text-align: right; padding: 4px 10px; font-size: 15px; border-bottom: 1px solid var(--line);
+  }
+  table.rates th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  table.rates td:first-child, table.rates th:first-child { text-align: left; font-weight: 700; }
+  .rates-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .stale { color: #b26a00; }
+  .cur-chips { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .actions { margin-top: 10px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .actions a { color: var(--blue); font-weight: 600; text-decoration: none; font-size: 14px; }
+  .actions a:hover { text-decoration: underline; }
+
+  .brmarker {
+    background: var(--yellow); border: 2px solid var(--blue); border-radius: 8px;
+    color: var(--blue); font-weight: 800; font-size: 13px; text-align: center;
+    line-height: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.4); white-space: nowrap;
+  }
+  .brmarker.near { background: var(--blue); color: #fff; border-color: var(--yellow); }
+  .stmarker {
+    background: #d21f26; color: #fff; border-radius: 50%; text-align: center;
+    font-weight: 800; line-height: 26px; font-size: 15px; border: 2px solid #fff;
+    box-shadow: 0 1px 5px rgba(0,0,0,.5);
+  }
+  .leaflet-popup-content { font-size: 14px; }
+
+  @media (max-width: 800px) {
+    .layout { flex-direction: column; height: auto; }
+    #map { height: 44vh; order: 1; }
+    .panel { width: 100%; min-width: 0; order: 2; }
+    header h1 { font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">ЮНИСТРИМ</span>
+  <h1>Обменные пункты — Москва</h1>
+  <span class="rates-status"><span id="ratesStamp">Курсы: загрузка…</span><button id="refreshBtn">Обновить</button></span>
+</header>
+
+<div class="searchwrap">
+  <input id="q" type="text" placeholder="Введите станцию метро — например, Фили" autocomplete="off">
+  <button id="clearq" title="Сбросить">✕</button>
+  <div class="suggest" id="suggest"></div>
+</div>
+
+<div class="layout">
+  <div class="panel" id="panel"></div>
+  <div id="map"></div>
+</div>
+
+<script src="vendor/leaflet.js"></script>
+<script src="data/branches.js"></script>
+<script src="data/metro.js"></script>
+<script>
+/* ---------- утилиты ---------- */
+const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
+const distM = (a, b, c, d) => {
+  const R = 6371000, p1 = a * Math.PI / 180, p2 = c * Math.PI / 180,
+        dp = (c - a) * Math.PI / 180, dl = (d - b) * Math.PI / 180,
+        h = Math.sin(dp/2)**2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+const walkInfo = m => {
+  const wm = Math.ceil(m * 1.35 / 80); // обход домов + 4.8 км/ч
+  const dist = m < 950 ? `${Math.round(m / 50) * 50} м` : `${(m / 1000).toFixed(1)} км`;
+  return { min: wm, txt: wm <= 45 ? `≈ ${wm} мин пешком · ${dist}` : `далеко · ${dist}` };
+};
+const DAYS_RU = { Mon: "Пн", Tue: "Вт", Wed: "Ср", Thu: "Чт", Fri: "Пт", Sat: "Сб", Sun: "Вс" };
+const CUR_SIGN = { USD: "$", EUR: "€", GBP: "£", CNY: "¥", CHF: "₣", AED: "AED", TRY: "₺", KZT: "₸", RUB: "₽" };
+
+function mskNow() {
+  const p = new Intl.DateTimeFormat("ru", { timeZone: "Europe/Moscow", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+  const get = t => p.find(x => x.type === t).value;
+  const wd = { "пн": "Mon", "вт": "Tue", "ср": "Wed", "чт": "Thu", "пт": "Fri", "сб": "Sat", "вс": "Sun" }[get("weekday").toLowerCase().slice(0, 2)];
+  return { wd, mins: parseInt(get("hour")) * 60 + parseInt(get("minute")) };
+}
+function isOpenNow(b) {
+  if (typeof b.openNowLive === "boolean") return b.openNowLive;
+  const { wd, mins } = mskNow();
+  const h = b.hours.find(x => x.d === wd);
+  if (!h) return false;
+  const [oh, om] = h.o.split(":").map(Number), [ch, cm] = h.c.split(":").map(Number);
+  return mins >= oh * 60 + om && mins < ch * 60 + cm;
+}
+function hoursText(b) {
+  const groups = [];
+  for (const h of b.hours) {
+    const key = h.o + "–" + h.c;
+    const g = groups[groups.length - 1];
+    if (g && g.key === key) g.days.push(h.d);
+    else groups.push({ key, days: [h.d], o: h.o, c: h.c });
+  }
+  return groups.map(g => {
+    const d = g.days.length > 1 ? `${DAYS_RU[g.days[0]]}–${DAYS_RU[g.days[g.days.length - 1]]}` : DAYS_RU[g.days[0]];
+    return `${d} ${g.o}–${g.c}`;
+  }).join(", ");
+}
+const fmtRate = v => (Math.round(v * 100) / 100).toLocaleString("ru-RU");
+
+/* ---------- состояние ---------- */
+let station = null;        // выбранная станция {n, lat, lng, l}
+let selectedBranch = null; // подсвеченный офис
+let ratesFetchedAt = null;
+
+/* ---------- карта ---------- */
+const map = L.map("map", { zoomControl: true });
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19, attribution: "© OpenStreetMap"
+}).addTo(map);
+
+const brMarkers = {};
+for (const b of BRANCHES) {
+  const icon = L.divIcon({ className: "", html: `<div class="brmarker" id="mk${b.num}">${b.num}</div>`, iconSize: [44, 26], iconAnchor: [22, 13] });
+  const mk = L.marker([b.lat, b.lon], { icon }).addTo(map);
+  mk.on("click", () => { selectBranch(b.num, true); });
+  brMarkers[b.num] = mk;
+}
+let stMarker = null, linkLines = [];
+fitAll();
+function fitAll() {
+  map.fitBounds(L.latLngBounds(BRANCHES.map(b => [b.lat, b.lon])).pad(0.08));
+}
+
+/* ---------- поиск станции ---------- */
+const q = document.getElementById("q"), sug = document.getElementById("suggest"), clearBtn = document.getElementById("clearq");
+let sugItems = [], sugIdx = -1;
+
+q.addEventListener("input", () => {
+  clearBtn.style.display = q.value ? "block" : "none";
+  const v = norm(q.value);
+  if (v.length < 1) { hideSug(); return; }
+  const starts = [], contains = [];
+  for (const s of METRO) {
+    const n = norm(s.n);
+    if (n.startsWith(v)) starts.push(s);
+    else if (n.includes(v)) contains.push(s);
+  }
+  sugItems = starts.concat(contains).slice(0, 9);
+  sugIdx = -1;
+  if (!sugItems.length) { hideSug(); return; }
+  sug.innerHTML = sugItems.map((s, i) =>
+    `<div data-i="${i}">${s.l.map(l => `<span class="dot" style="background:${l.c}" title="${l.n}"></span>`).join("")}<span>${s.n}</span></div>`
+  ).join("");
+  sug.style.display = "block";
+  [...sug.children].forEach(el => el.addEventListener("mousedown", e => { e.preventDefault(); pickStation(sugItems[+el.dataset.i]); }));
+});
+q.addEventListener("keydown", e => {
+  if (sug.style.display !== "block") return;
+  if (e.key === "ArrowDown") { sugIdx = Math.min(sugIdx + 1, sugItems.length - 1); markSug(); e.preventDefault(); }
+  else if (e.key === "ArrowUp") { sugIdx = Math.max(sugIdx - 1, 0); markSug(); e.preventDefault(); }
+  else if (e.key === "Enter") { pickStation(sugItems[Math.max(sugIdx, 0)]); e.preventDefault(); }
+  else if (e.key === "Escape") hideSug();
+});
+q.addEventListener("blur", () => setTimeout(hideSug, 150));
+clearBtn.addEventListener("click", resetStation);
+function markSug() { [...sug.children].forEach((el, i) => el.classList.toggle("active", i === sugIdx)); }
+function hideSug() { sug.style.display = "none"; }
+
+function pickStation(s) {
+  station = s; selectedBranch = null;
+  q.value = s.n; hideSug(); q.blur();
+  clearBtn.style.display = "block";
+  render();
+}
+function resetStation() {
+  station = null; selectedBranch = null; q.value = "";
+  clearBtn.style.display = "none";
+  render(); fitAll();
+}
+
+/* ---------- выбор офиса ---------- */
+function selectBranch(num, scroll) {
+  selectedBranch = num;
+  renderPanel();
+  document.querySelectorAll(".brmarker").forEach(el => el.style.outline = "");
+  const el = document.getElementById("mk" + num);
+  if (el) el.style.outline = "3px solid #d21f26";
+  if (scroll) {
+    const card = document.getElementById("card" + num);
+    if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+/* ---------- отрисовка ---------- */
+function branchesSorted() {
+  if (!station) return [...BRANCHES].sort((a, b) => a.num.localeCompare(b.num));
+  return [...BRANCHES]
+    .map(b => ({ ...b, d: distM(station.lat, station.lng, b.lat, b.lon) }))
+    .sort((a, b) => a.d - b.d);
+}
+
+function render() {
+  renderPanel();
+  renderMapExtras();
+}
+
+function renderMapExtras() {
+  linkLines.forEach(l => map.removeLayer(l)); linkLines = [];
+  if (stMarker) { map.removeLayer(stMarker); stMarker = null; }
+  if (!station) return;
+  const icon = L.divIcon({ className: "", html: `<div class="stmarker" style="width:30px;height:30px">М</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+  stMarker = L.marker([station.lat, station.lng], { icon, zIndexOffset: 1000 }).addTo(map)
+    .bindPopup(`<b>${station.n}</b>`);
+  const top = branchesSorted().slice(0, 3);
+  for (const b of top) {
+    linkLines.push(L.polyline([[station.lat, station.lng], [b.lat, b.lon]],
+      { color: "#1a3e8c", weight: 2.5, dashArray: "6 7", opacity: .75 }).addTo(map));
+  }
+  const bounds = L.latLngBounds([[station.lat, station.lng], ...top.map(b => [b.lat, b.lon])]);
+  map.fitBounds(bounds.pad(0.25));
+  document.querySelectorAll(".brmarker").forEach(el => el.classList.remove("near"));
+  top.forEach(b => { const el = document.getElementById("mk" + b.num); if (el) el.classList.add("near"); });
+}
+
+function ratesTable(b) {
+  if (!b.rates || !b.rates.length) {
+    return `<div class="rates-note">Курсы не опубликованы — уточнить по телефону</div>`;
+  }
+  const at = b.rates[0].at ? new Date(b.rates[0].at) : null;
+  const now = new Date();
+  const stale = at && (now - at) > 26 * 3600e3;
+  const atTxt = at ? at.toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+  const rows = b.rates.map(r =>
+    `<tr><td>${r.cur}${CUR_SIGN[r.cur] && CUR_SIGN[r.cur] !== r.cur ? " " + CUR_SIGN[r.cur] : ""}</td><td>${fmtRate(r.buy)}</td><td>${fmtRate(r.sell)}</td></tr>`).join("");
+  const extra = b.currencies.filter(c => c !== "RUB" && !b.rates.some(r => r.cur === c));
+  return `<table class="rates">
+    <tr><th>Валюта</th><th>Покупка</th><th>Продажа</th></tr>${rows}</table>
+    <div class="rates-note ${stale ? "stale" : ""}">Курс от ${atTxt}${stale ? " ⚠ возможно устарел" : ""}</div>
+    ${extra.length ? `<div class="cur-chips">Также обмен: ${extra.join(", ")} — курс по телефону</div>` : ""}`;
+}
+
+function card(b) {
+  const open = isOpenNow(b);
+  const w = station ? walkInfo(b.d) : null;
+  const route = station
+    ? `https://yandex.ru/maps/?rtext=${station.lat},${station.lng}~${b.lat},${b.lon}&rtt=pd`
+    : `https://yandex.ru/maps/?pt=${b.lon},${b.lat}&z=17`;
+  const phoneDigits = (b.phone || "").replace(/[^\d+]/g, "");
+  return `<div class="card ${selectedBranch === b.num ? "selected" : ""}" id="card${b.num}" onclick="selectBranch('${b.num}', false); map.setView([${b.lat}, ${b.lon}], 15);">
+    <div class="toprow">
+      <span class="num">№ ${b.num}</span>
+      <span class="badge ${open ? "open" : "closed"}">${open ? "Открыто" : "Закрыто"}</span>
+      ${w ? `<span class="walk">${w.txt}</span>` : ""}
+    </div>
+    <div class="addr">${b.address}</div>
+    ${b.metro.length ? `<div class="metro-tags">${b.metro.map(m => `<span class="mtag">${m}</span>`).join("")}</div>` : ""}
+    <div class="kv">График: <b>${hoursText(b)}</b>${b.hoursNotes ? ` · перерыв: ${b.hoursNotes.replace(/^перерыв[а-яё]*\s*:?\s*/i, "").replace(/\n/g, ", ")}` : ""}</div>
+    ${b.phone ? `<div class="kv">Телефон: <b><a href="tel:${phoneDigits}" onclick="event.stopPropagation()">${b.phone}</a></b></div>` : ""}
+    ${b.notes ? `<details class="howto" onclick="event.stopPropagation()"><summary>Как найти</summary><p>${b.notes}</p></details>` : ""}
+    ${ratesTable(b)}
+    <div class="actions">
+      <a href="${route}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${station ? "Маршрут от метро в Яндекс Картах" : "Открыть в Яндекс Картах"}</a>
+      <a href="https://unistream.ru/exchange?branch=${b.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Курсы на unistream.ru</a>
+    </div>
+  </div>`;
+}
+
+function renderPanel() {
+  const p = document.getElementById("panel");
+  const list = branchesSorted();
+  if (!station) {
+    p.innerHTML = `<div class="hint">Введите станцию метро, которую назвал клиент, — покажу ближайшие отделения, время пешком и курсы. Или нажмите на отделение на карте.</div>`
+      + list.map(card).join("");
+    return;
+  }
+  const lines = station.l.map(l => `<span class="dot" style="background:${l.c}" title="${l.n}"></span>`).join("");
+  const top = list.slice(0, 3), rest = list.slice(3);
+  p.innerHTML = `<div class="station-head"><span class="stmarker" style="display:inline-block;width:26px;height:26px;flex:0 0 26px">М</span><b>${station.n}</b><span class="lines">${lines}</span></div>`
+    + `<div class="hint">Ближайшие отделения:</div>` + top.map(card).join("")
+    + `<details style="margin-top:6px"><summary style="cursor:pointer;color:var(--blue);font-weight:600">Остальные отделения (${rest.length})</summary>${rest.map(card).join("")}</details>`;
+}
+
+/* ---------- живые курсы ---------- */
+async function refreshRates() {
+  document.getElementById("ratesStamp").textContent = "Курсы: обновляю…";
+  const jobs = BRANCHES.map(async b => {
+    const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    b.rates = (d.exchangeRates || []).map(x => ({ cur: x.currency, buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }));
+    b.currencies = d.currencies || b.currencies;
+    if (d.workingSchedule && typeof d.workingSchedule.openNow === "boolean") b.openNowLive = d.workingSchedule.openNow;
+  });
+  const res = await Promise.allSettled(jobs);
+  const ok = res.filter(r => r.status === "fulfilled").length;
+  const t = new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" });
+  ratesFetchedAt = t;
+  document.getElementById("ratesStamp").textContent = ok
+    ? `Курсы обновлены в ${t}${ok < BRANCHES.length ? ` (${ok}/${BRANCHES.length})` : ""}`
+    : `Live-курсы недоступны — показаны сохранённые от ${new Date(DATA_BUILT_AT).toLocaleDateString("ru-RU")}`;
+  renderPanel();
+}
+document.getElementById("refreshBtn").addEventListener("click", refreshRates);
+setInterval(refreshRates, 10 * 60 * 1000);
+
+render();
+refreshRates();
+</script>
+</body>
+</html>
