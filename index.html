@@ -211,6 +211,34 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19, attribution: "© OpenStreetMap"
 }).addTo(map);
 
+/* слой метро: линии в фирменных цветах + станции-кружки */
+const metroLayer = L.layerGroup();
+for (const line of METRO_LINES) {
+  const pts = line.s.map(s => [s.lat, s.lng]);
+  if (line.ring && pts.length > 2) pts.push(pts[0]);
+  L.polyline(pts, { color: line.c, weight: 3, opacity: .8, interactive: false })
+    .addTo(metroLayer);
+}
+for (const line of METRO_LINES) {
+  for (const s of line.s) {
+    L.circleMarker([s.lat, s.lng], {
+      radius: 4, color: line.c, weight: 2, fillColor: "#fff", fillOpacity: 1
+    }).bindTooltip(`${s.n} · ${line.n}`, { direction: "top", offset: [0, -6] })
+      .on("click", () => {
+        let best = null, bd = Infinity;
+        for (const m of METRO) {
+          const d = distM(s.lat, s.lng, m.lat, m.lng);
+          if (norm(m.n).includes(norm(s.n)) && d < bd) { best = m; bd = d; }
+        }
+        pickStation(best || { n: s.n, lat: s.lat, lng: s.lng, l: [{ n: line.n, c: line.c }] });
+      })
+      .addTo(metroLayer);
+  }
+}
+metroLayer.addTo(map);
+L.control.layers(null, { "Линии и станции метро": metroLayer },
+  { collapsed: false, position: "topright" }).addTo(map);
+
 const brMarkers = {};
 for (const b of BRANCHES) {
   const icon = L.divIcon({ className: "", html: `<div class="brmarker" id="mk${b.num}">${b.num}</div>`, iconSize: [44, 26], iconAnchor: [22, 13] });
