@@ -83,9 +83,6 @@
     background: var(--yellow); color: var(--blue); font-weight: 800; font-size: 19px;
     border-radius: 8px; padding: 2px 10px;
   }
-  .badge { font-size: 13px; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
-  .badge.open { color: var(--ok); background: #e2f4e8; }
-  .badge.closed { color: var(--closed); background: #fbe4e4; }
   .walk { margin-left: auto; font-weight: 700; color: var(--blue); font-size: 15px; white-space: nowrap; }
   .card .addr { margin: 8px 0 2px; font-size: 16px; }
   .card .metro-tags { margin: 4px 0; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -171,20 +168,6 @@ const walkInfo = m => {
 const DAYS_RU = { Mon: "Пн", Tue: "Вт", Wed: "Ср", Thu: "Чт", Fri: "Пт", Sat: "Сб", Sun: "Вс" };
 const CUR_SIGN = { USD: "$", EUR: "€", GBP: "£", CNY: "¥", CHF: "₣", AED: "AED", TRY: "₺", KZT: "₸", RUB: "₽" };
 
-function mskNow() {
-  const p = new Intl.DateTimeFormat("ru", { timeZone: "Europe/Moscow", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
-  const get = t => p.find(x => x.type === t).value;
-  const wd = { "пн": "Mon", "вт": "Tue", "ср": "Wed", "чт": "Thu", "пт": "Fri", "сб": "Sat", "вс": "Sun" }[get("weekday").toLowerCase().slice(0, 2)];
-  return { wd, mins: parseInt(get("hour")) * 60 + parseInt(get("minute")) };
-}
-function isOpenNow(b) {
-  if (typeof b.openNowLive === "boolean") return b.openNowLive;
-  const { wd, mins } = mskNow();
-  const h = b.hours.find(x => x.d === wd);
-  if (!h) return false;
-  const [oh, om] = h.o.split(":").map(Number), [ch, cm] = h.c.split(":").map(Number);
-  return mins >= oh * 60 + om && mins < ch * 60 + cm;
-}
 function hoursText(b) {
   const groups = [];
   for (const h of b.hours) {
@@ -362,22 +345,18 @@ function ratesTable(b) {
 }
 
 function card(b) {
-  const open = isOpenNow(b);
   const w = station ? walkInfo(b.d) : null;
   const route = station
     ? `https://yandex.ru/maps/?rtext=${station.lat},${station.lng}~${b.lat},${b.lon}&rtt=pd`
     : `https://yandex.ru/maps/?pt=${b.lon},${b.lat}&z=17`;
-  const phoneDigits = (b.phone || "").replace(/[^\d+]/g, "");
   return `<div class="card ${selectedBranch === b.num ? "selected" : ""}" id="card${b.num}" onclick="selectBranch('${b.num}', false); map.setView([${b.lat}, ${b.lon}], 15);">
     <div class="toprow">
       <span class="num">№ ${b.num}</span>
-      <span class="badge ${open ? "open" : "closed"}">${open ? "Открыто" : "Закрыто"}</span>
       ${w ? `<span class="walk">${w.txt}</span>` : ""}
     </div>
     <div class="addr">${b.address}</div>
     ${b.metro.length ? `<div class="metro-tags">${b.metro.map(m => `<span class="mtag">${m}</span>`).join("")}</div>` : ""}
     <div class="kv">График: <b>${hoursText(b)}</b>${b.hoursNotes ? ` · перерыв: ${b.hoursNotes.replace(/^перерыв[а-яё]*\s*:?\s*/i, "").replace(/\n/g, ", ")}` : ""}</div>
-    ${b.phone ? `<div class="kv">Телефон: <b><a href="tel:${phoneDigits}" onclick="event.stopPropagation()">${b.phone}</a></b></div>` : ""}
     ${b.notes ? `<details class="howto" onclick="event.stopPropagation()"><summary>Как найти</summary><p>${b.notes}</p></details>` : ""}
     ${ratesTable(b)}
     <div class="actions">
@@ -411,7 +390,6 @@ async function refreshRates() {
     const d = await r.json();
     b.rates = (d.exchangeRates || []).map(x => ({ cur: x.currency, buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }));
     b.currencies = d.currencies || b.currencies;
-    if (d.workingSchedule && typeof d.workingSchedule.openNow === "boolean") b.openNowLive = d.workingSchedule.openNow;
   });
   const res = await Promise.allSettled(jobs);
   const ok = res.filter(r => r.status === "fulfilled").length;
