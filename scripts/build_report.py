@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Excel-отчёт по конкурентам вокруг каждого отделения.
+"""Excel-отчёт по курсам вокруг каждого отделения. Два режима.
 
-Лист «Сводка» — по одной строке на отделение: сколько конкурентов рядом, где нас
-обыгрывают, есть ли окно перепродажи. Дальше по листу на каждое отделение с
-курсами соседей. Наши курсы берутся живыми из API Юнистрима на момент сборки.
+Внутренний (по умолчанию): с оценками — кто нас обыгрывает, где открыто окно
+перепродажи, выделения красным.
 
-  python3 build_report.py [путь.xlsx]
+Для руководства (--clean): только факты — какие банки рядом, по каким адресам,
+какие у них курсы и когда обновлены. Без сравнений, выводов и подсветки.
+
+Наши курсы в обоих случаях живые, из API Юнистрима на момент сборки.
+
+  python3 build_report.py               # внутренний
+  python3 build_report.py --clean       # для руководства
 """
 import json
 import re
@@ -66,11 +71,13 @@ def collect():
     for c in comps:
         for n in c["near"]:
             by_branch[n["num"]].append({"bank": c["bank"], "address": c["address"] or c["name"],
-                                        "d": n["d"], "rates": c["rates"], "kind": "офис"})
+                                        "d": n["d"], "rates": c["rates"], "kind": "офис",
+                                        "at": (c.get("at") or "")[:16].replace("T", " ")})
     for o in mf:
         for n in o["near"]:
             by_branch[n["num"]].append({"bank": o["bank"], "address": o["address"],
-                                        "d": n["d"], "rates": o["rates"], "kind": "офис"})
+                                        "d": n["d"], "rates": o["rates"], "kind": "офис",
+                                        "at": o.get("at") or ""})
     seen_city = {b["num"]: set() for b in branches}
     for p in poi:
         alias = poi_bank.get(p["n"])
@@ -85,7 +92,7 @@ def collect():
             seen_city[n["num"]].add(key)
             by_branch[n["num"]].append({
                 "bank": r["name"], "address": p.get("addr") or "", "d": n["d"],
-                "rates": r["rates"],
+                "rates": r["rates"], "at": r.get("at") or "",
                 "kind": "банк (везде одинаково)" if r.get("same") else "банк (по городу)"})
     for num in by_branch:
         by_branch[num].sort(key=lambda x: x["d"])
@@ -103,9 +110,100 @@ def style_header(ws, row, titles, widths):
     ws.row_dimensions[row].height = 28
 
 
+SOURCE_LABEL = {
+    "офис": "курс отделения",
+    "банк (везде одинаково)": "курс банка",
+    "банк (по городу)": "курс банка по городу",
+}
+
+
+def build_clean(wb, branches, by_branch, norates, ours, now):
+    """Отчёт для руководства: только факты, без сравнений и подсветки."""
+    ws = wb.active
+    ws.title = "Сводка"
+    ws["A1"] = "Курсы обмена валют рядом с отделениями ЮНИСТРИМ — Москва"
+    ws["A1"].font = Font(bold=True, size=14, color=BLUE)
+    ws["A2"] = (f"Банки и обменные пункты в радиусе 1 км от каждого отделения. "
+                f"Данные на {now:%d.%m.%Y %H:%M} МСК.")
+    ws["A2"].font = Font(size=9, color=GREY)
+    ws["A3"] = ("Источники: banki.ru, mainfin.ru (курсы сторонних банков), "
+                "OpenStreetMap (расположение точек), API ЮНИСТРИМ (наши курсы).")
+    ws["A3"].font = Font(size=9, color=GREY)
+
+    style_header(ws, 5, ["Отделение", "Адрес", "Метро", "Банков\nрядом",
+                         "Без публикуемых\nкурсов", "USD у нас\nпокупка / продажа",
+                         "EUR у нас\nпокупка / продажа", "USD рядом\nпокупка, мин–макс",
+                         "USD рядом\nпродажа, мин–макс"],
+                 [12, 40, 24, 10, 15, 18, 18, 20, 20])
+    row = 6
+    for b in branches:
+        lst = by_branch[b["num"]]
+        our = ours[b["num"]]
+        buys = [c["rates"]["USD"]["buy"] for c in lst if c["rates"].get("USD", {}).get("buy")]
+        sells = [c["rates"]["USD"]["sell"] for c in lst if c["rates"].get("USD", {}).get("sell")]
+        rng = lambda v: f"{min(v):.2f} – {max(v):.2f}" if v else "—"
+        pair = lambda cur: (f"{our[cur]['buy']} / {our[cur]['sell']}" if our.get(cur) else "—")
+        vals = [f"№ {b['num']}", b["address"], ", ".join(b["metro"]) or "—",
+                len(lst), norates[b["num"]], pair("USD"), pair("EUR"), rng(buys), rng(sells)]
+        for i, v in enumerate(vals, start=1):
+            c = ws.cell(row=row, column=i, value=v)
+            c.border = BOX
+            c.alignment = Alignment(vertical="top", wrap_text=i in (2, 3))
+            c.font = Font(size=10, bold=(i == 1))
+        row += 1
+    ws.freeze_panes = "A6"
+
+    for b in branches:
+        sh = wb.create_sheet(f"№{b['num']}")
+        our = ours[b["num"]]
+        sh["A1"] = f"Отделение № {b['num']} — {b['address']}"
+        sh["A1"].font = Font(bold=True, size=13, color=BLUE)
+        sh["A2"] = f"Метро: {', '.join(b['metro']) or '—'}. Банков в радиусе 1 км: {len(by_branch[b['num']])}."
+        sh["A2"].font = Font(size=9, color=GREY)
+
+        sh["A4"] = "Курсы отделения"
+        sh["A4"].font = Font(bold=True, size=11)
+        style_header(sh, 5, ["Валюта", "Покупка", "Продажа", "Обновлено"], [12, 12, 12, 18])
+        r = 6
+        for cur, v in our.items():
+            for i, val in enumerate([cur, v["buy"], v["sell"], (v.get("at") or "")[11:16]], start=1):
+                cell = sh.cell(row=r, column=i, value=val)
+                cell.border = BOX
+                cell.font = Font(size=10, bold=(i == 1))
+            r += 1
+
+        r += 1
+        sh.cell(row=r, column=1, value="Курсы в банках рядом").font = Font(bold=True, size=11)
+        r += 1
+        style_header(sh, r, ["Банк", "Адрес", "Расстояние,\nм", "Данные", "Валюта",
+                             "Покупка", "Продажа", "Обновлено"],
+                     [24, 42, 11, 20, 9, 11, 11, 16])
+        r += 1
+        for c in by_branch[b["num"]]:
+            first = True
+            for cur in sorted(c["rates"]):
+                t = c["rates"][cur]
+                vals = [c["bank"] if first else "", c["address"] if first else "",
+                        c["d"] if first else "", SOURCE_LABEL.get(c["kind"], c["kind"]) if first else "",
+                        cur, t.get("buy"), t.get("sell"), c.get("at", "") if first else ""]
+                for i, v in enumerate(vals, start=1):
+                    cell = sh.cell(row=r, column=i, value=v)
+                    cell.border = BOX
+                    cell.alignment = Alignment(vertical="top", wrap_text=(i == 2))
+                    cell.font = Font(size=10, bold=(i == 1 and first))
+                if first:
+                    sh.cell(row=r, column=1).fill = SUBHEAD
+                first = False
+                r += 1
+        sh.freeze_panes = "A8"
+
+
 def main():
-    out_path = Path(sys.argv[1]) if len(sys.argv) > 1 else \
-        ROOT / f"report/Конкуренты_ЮНИСТРИМ_{datetime.now(MSK):%Y-%m-%d}.xlsx"
+    clean = "--clean" in sys.argv
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    default_name = ("Курсы_рядом_с_отделениями" if clean else "Конкуренты_ЮНИСТРИМ")
+    out_path = Path(args[0]) if args else \
+        ROOT / f"report/{default_name}_{datetime.now(MSK):%Y-%m-%d}.xlsx"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     branches, by_branch, norates = collect()
@@ -120,9 +218,16 @@ def main():
         time.sleep(0.8)
 
     wb = Workbook()
+    now = datetime.now(MSK)
+    if clean:
+        build_clean(wb, branches, by_branch, norates, ours, now)
+        wb.save(out_path)
+        print(f"готово: {out_path}")
+        print(f"листов: {len(wb.sheetnames)}, отделений: {len(branches)}")
+        return
+
     ws = wb.active
     ws.title = "Сводка"
-    now = datetime.now(MSK)
     ws["A1"] = "Конкурентное окружение отделений ЮНИСТРИМ — Москва"
     ws["A1"].font = Font(bold=True, size=14, color=BLUE)
     ws["A2"] = (f"Радиус 1 км. Сформировано {now:%d.%m.%Y %H:%M} МСК. "
