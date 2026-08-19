@@ -9,6 +9,7 @@ mainfin.ru покрывает ~50 банков (ВТБ, Газпромбанк, 
   python3 collect_bank_rates.py [--dry-run]
 """
 import json
+import math
 import re
 import subprocess
 import sys
@@ -16,8 +17,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
 ROOT = HERE.parent
 SSH_HOST = "ruvds"
+RADIUS_M = 1000
+OUR_BANK_MARKERS = ("юнистрим", "unistream")
 
 # Ключи — уже нормализованные имена из OSM, значения — нормализованные имена в источнике.
 # Нужны там, где названия расходятся сильнее, чем справляется norm().
@@ -57,10 +61,58 @@ def remote(script_name, timeout=600):
     return json.loads(p.stdout.decode())
 
 
-def fetch_banks():
+def fetch_mainfin():
     d = remote("remote_fetch_mainfin.py", timeout=300)
-    log(f"  mainfin: {len(d['banks'])} банков")
-    return d["banks"]
+    log(f"  mainfin: {len(d['banks'])} банков, {len(d.get('offices', []))} отделений")
+    return d["banks"], d.get("offices", [])
+
+
+def dist_m(lat1, lon1, lat2, lon2):
+    r = 6371000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def build_mainfin_offices(offices, banks, branches, known):
+    """Отделения mainfin с адресами → координаты через геокодер → те, что в 1 км от нас.
+
+    У mainfin курсы именно по отделению (у 9 банков они между офисами различаются),
+    поэтому это полноценные офисные данные, а не оценка по городу."""
+    import geocode
+    names = {b["alias"]: b["name"] for b in banks}
+    addrs = sorted({o["address"] for o in offices})
+    coords = geocode.geocode_many(addrs, limit=40)  # новые адреса добираем порциями
+
+    out, seen = [], set()
+    for o in offices:
+        c = coords.get(o["address"])
+        if not c:
+            continue
+        key = (o["alias"], round(c["lat"], 5), round(c["lon"], 5))
+        if key in seen:      # mainfin повторяет один и тот же офис несколько раз
+            continue
+        seen.add(key)
+        near = sorted(({"num": b["num"], "d": round(dist_m(b["lat"], b["lon"], c["lat"], c["lon"]))}
+                       for b in branches
+                       if dist_m(b["lat"], b["lon"], c["lat"], c["lon"]) <= RADIUS_M),
+                      key=lambda x: x["d"])
+        if not near:
+            continue
+        bank = names.get(o["alias"], o["alias"])
+        if any(m in bank.lower() for m in OUR_BANK_MARKERS):
+            continue
+        # тот же офис уже есть с banki.ru (там больше валют) — не дублируем
+        if any(norm(k["bank"]) == norm(bank)
+               and dist_m(k["lat"], k["lon"], c["lat"], c["lon"]) < 150 for k in known):
+            continue
+        out.append({
+            "bank": bank, "address": o["address"], "lat": c["lat"], "lon": c["lon"],
+            "rates": o["rates"], "at": o["at"], "near": near,
+        })
+    out.sort(key=lambda x: (x["near"][0]["num"], x["near"][0]["d"]))
+    return out
 
 
 def office_rates_by_bank():
@@ -89,7 +141,7 @@ def office_rates_by_bank():
 
 def main():
     dry = "--dry-run" in sys.argv
-    banks = fetch_banks()
+    banks, mf_offices = fetch_mainfin()
     if len(banks) < 20:
         raise RuntimeError(f"подозрительно мало банков: {len(banks)}")
     by_norm = {}
@@ -132,6 +184,16 @@ def main():
     if overridden:
         log("курс подтверждён офисными данными banki.ru: " + ", ".join(sorted(overridden)))
 
+    branches = load_js_array("branches.js", "BRANCHES")
+    known = load_js_array("competitors.js", "COMPETITORS")
+    mf = build_mainfin_offices(mf_offices, banks, branches, known)
+    per = {}
+    for o in mf:
+        for n in o["near"]:
+            per[n["num"]] = per.get(n["num"], 0) + 1
+    log(f"отделений mainfin в радиусе 1 км: {len(mf)} "
+        f"({', '.join(f'{k}:{v}' for k, v in sorted(per.items()))})")
+
     if dry:
         log("не совпало: " + ", ".join(sorted(unmatched)[:20]))
         log("--dry-run: файл не записан")
@@ -144,6 +206,9 @@ def main():
         + ";\nconst POI_BANK = "
         + json.dumps(mapping, ensure_ascii=False, separators=(",", ":"))
         + f";\nconst BANK_RATES_AT = {json.dumps(stamp)};\n")
+    (ROOT / "data" / "offices_mainfin.js").write_text(
+        f"// generated {stamp}\nconst OFFICES_MF = "
+        + json.dumps(mf, ensure_ascii=False, separators=(",", ":")) + ";\n")
 
     status = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--",
                              "data/bankrates.js"], capture_output=True, text=True).stdout

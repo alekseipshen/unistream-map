@@ -130,6 +130,11 @@
   table.comp-tbl td.worse { color: var(--closed); font-weight: 700; }
   .comp-name { font-weight: 600; }
   .comp-addr { color: var(--muted); font-size: 12.5px; }
+  .comp-item { margin-top: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+  .comp-item:hover { background: #eef3ff; }
+  .comp-show { color: var(--blue); font-weight: 600; opacity: 0; }
+  .comp-item:hover .comp-show { opacity: 1; }
+  @media (hover: none) { .comp-show { opacity: 1; } }
   .compmarker {
     border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45);
     background: #6b7a90;
@@ -183,6 +188,7 @@
 <script src="data/poi.js"></script>
 <script src="data/bankrates.js"></script>
 <script src="data/volatility.js"></script>
+<script src="data/offices_mainfin.js"></script>
 <script>
 /* ---------- утилиты ---------- */
 const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
@@ -262,6 +268,10 @@ function renderCompMarkers() {
   for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
     points.push({ bank: c.bank, addr: c.address || c.name, lat: c.lat, lon: c.lon,
                   rates: c.rates, near: c.near[0], precision: "office" });
+  }
+  for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
+    points.push({ bank: o.bank, addr: o.address, lat: o.lat, lon: o.lon,
+                  rates: o.rates, near: o.near[0], precision: "office" });
   }
   for (const p of (typeof POI !== "undefined" ? POI : [])) {
     const r = poiRates(p);
@@ -447,7 +457,16 @@ const NORATE_BY_BRANCH = {}; // точки рядом, по которым ку�
 
 for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
   for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({
-    c: { bank: c.bank, address: c.address || c.name, rates: c.rates, precision: "office" },
+    c: { bank: c.bank, address: c.address || c.name, rates: c.rates, precision: "office",
+         lat: c.lat, lon: c.lon },
+    d: n.d,
+  });
+}
+// отделения из mainfin: курс тоже по конкретному офису, адрес свой, координаты по геокодеру
+for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
+  for (const n of o.near) (COMP_BY_BRANCH[n.num] ||= []).push({
+    c: { bank: o.bank, address: o.address, rates: o.rates, precision: "office",
+         lat: o.lat, lon: o.lon },
     d: n.d,
   });
 }
@@ -458,7 +477,7 @@ for (const p of (typeof POI !== "undefined" ? POI : [])) {
       // same = во всех отделениях банка курс совпадает (проверено по офисным данным banki.ru)
       (COMP_BY_BRANCH[n.num] ||= []).push({
         c: { bank: r.name, address: p.addr || "", rates: r.rates, at: r.at,
-             precision: r.same ? "uniform" : "city" },
+             lat: p.lat, lon: p.lon, precision: r.same ? "uniform" : "city" },
         d: n.d,
       });
     } else {
@@ -518,6 +537,20 @@ function compRatesTable(b, c) {
   }).join("");
   return `<table class="comp-tbl">
     <tr><th>Валюта</th><th>Покупка</th><th>Продажа</th><th>у нас</th></tr>${rows}</table>`;
+}
+
+/** Клик по конкуренту в списке — показать его точку на карте и открыть подпись. */
+function showCompetitor(lat, lon) {
+  if (!map.hasLayer(compLayer)) map.addLayer(compLayer);
+  map.setView([lat, lon], 17);
+  let best = null, bd = Infinity;
+  compLayer.eachLayer(m => {
+    const p = m.getLatLng();
+    const d = Math.abs(p.lat - lat) + Math.abs(p.lng - lon);
+    if (d < bd) { bd = d; best = m; }
+  });
+  if (best && bd < 0.0005) best.openPopup();
+  if (window.innerWidth <= 800) document.getElementById("map").scrollIntoView({ behavior: "smooth" });
 }
 
 /** Сосед продаёт валюту дешевле, чем мы её покупаем: у нас можно перепродать с прибылью.
@@ -580,12 +613,12 @@ function competitorsBlock(b) {
          <th>Лучше всех покупают</th><th>Дешевле всех продают</th></tr>${summary}</table>`
     : "";
 
-  const items = list.map(({ c, d }) => `<div style="margin-top:10px">
+  const items = list.map(({ c, d }) => `<div class="comp-item" onclick="showCompetitor(${c.lat}, ${c.lon}); event.stopPropagation()" title="Показать на карте">
       <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${volatilityNote(c.bank)}${c.precision === "city"
         ? ` <span class="comp-addr">курс по городу*</span>`
         : c.precision === "uniform"
           ? ` <span class="comp-addr">курс одинаковый во всех отделениях</span>` : ""}</div>
-      ${c.address ? `<div class="comp-addr">${c.address}</div>` : ""}
+      <div class="comp-addr">${c.address || "адрес уточняется"} <span class="comp-show">показать на карте</span></div>
       ${compRatesTable(b, c)}</div>`).join("");
   const hasCity = list.some(x => x.c.precision === "city");
 

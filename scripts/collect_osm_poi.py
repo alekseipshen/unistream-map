@@ -106,6 +106,18 @@ def main():
             "near": near,
         })
 
+    # у большинства точек OSM адреса нет — добираем обратным геокодированием (кэш на диске)
+    sys.path.insert(0, str(HERE))
+    import geocode
+    missing = [(i, p["lat"], p["lon"]) for i, p in enumerate(out) if not p["addr"]]
+    if missing:
+        print(f"без адреса: {len(missing)}, запрашиваем…", file=sys.stderr)
+        found = geocode.reverse_many(missing)
+        for i, addr in found.items():
+            if addr:
+                out[i]["addr"] = addr
+    print(f"с адресом: {sum(1 for p in out if p['addr'])} из {len(out)}", file=sys.stderr)
+
     out.sort(key=lambda x: (x["near"][0]["num"], x["near"][0]["d"]))
     stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     (ROOT / "data" / "poi.js").write_text(

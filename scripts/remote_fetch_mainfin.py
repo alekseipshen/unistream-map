@@ -60,10 +60,40 @@ def parse(html):
     return banks
 
 
+def parse_offices(html):
+    """Строки конкретных отделений: адрес + курсы + время.
+
+    Разметка: <tr class="row toggle-tbl ..."> со ссылкой /bank/{alias}/map/... и
+    ячейками <td class="USD curr_hid">покупка</td><td class="USD ...">продажа</td>."""
+    offices = []
+    for row in re.findall(r"<tr[^>]*class=\"[^\"]*toggle-tbl[^\"]*\"[^>]*>(.*?)</tr>", html, re.S):
+        link = re.search(r'href="/bank/([a-z0-9_-]+)/map/[^"]*"[^>]*>([^<]+)</a>', row)
+        if not link:
+            continue
+        alias, address = link.group(1), link.group(2).strip()
+        rates = {}
+        for cur in ("USD", "EUR", "CNY"):
+            vals = re.findall(rf'<td[^>]*class="[^"]*\b{cur}\b[^"]*"[^>]*>\s*([\d.]+)\s*</td>', row)
+            if len(vals) >= 2 and float(vals[0]) > 0 and float(vals[1]) > 0:
+                rates[cur] = {"buy": float(vals[0]), "sell": float(vals[1])}
+        if not rates:
+            continue
+        when = re.search(r"(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})", row)
+        offices.append({
+            "alias": alias,
+            "address": address,
+            "rates": rates,
+            "at": when.group(1) if when else None,
+        })
+    return offices
+
+
 def main():
-    banks = parse(fetch())
-    print(f"mainfin: {len(banks)} банков с курсами", file=sys.stderr)
-    json.dump({"banks": banks}, sys.stdout, ensure_ascii=False)
+    html = fetch()
+    banks = parse(html)
+    offices = parse_offices(html)
+    print(f"mainfin: {len(banks)} банков, {len(offices)} отделений с курсами", file=sys.stderr)
+    json.dump({"banks": banks, "offices": offices}, sys.stdout, ensure_ascii=False)
 
 
 if __name__ == "__main__":
