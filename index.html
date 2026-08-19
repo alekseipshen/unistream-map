@@ -109,6 +109,13 @@
   .actions a { color: var(--blue); font-weight: 600; text-decoration: none; font-size: 14px; }
   .actions a:hover { text-decoration: underline; }
 
+  .arb {
+    background: #fdecec; border: 1px solid #f3c2c2; border-left: 4px solid var(--closed);
+    border-radius: 8px; padding: 8px 11px; margin: 8px 0; font-size: 14px;
+  }
+  .arb b { color: var(--closed); }
+  .arb > div { margin-top: 3px; }
+  .arb-note { color: var(--muted); font-size: 13px; margin-top: 5px; }
   .comp-block { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
   .comp-head { font-size: 14px; font-weight: 600; color: #1c2330; }
   .comp-warn { color: var(--closed); font-weight: 700; }
@@ -175,6 +182,7 @@
 <script src="data/competitors.js"></script>
 <script src="data/poi.js"></script>
 <script src="data/bankrates.js"></script>
+<script src="data/volatility.js"></script>
 <script>
 /* ---------- утилиты ---------- */
 const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
@@ -512,11 +520,42 @@ function compRatesTable(b, c) {
     <tr><th>Валюта</th><th>Покупка</th><th>Продажа</th><th>у нас</th></tr>${rows}</table>`;
 }
 
+/** Сосед продаёт валюту дешевле, чем мы её покупаем: у нас можно перепродать с прибылью.
+    Для отделения это потеря маржи, поэтому выносим отдельной строкой наверх. */
+function arbitrageWarnings(b) {
+  const list = COMP_BY_BRANCH[b.num] || [];
+  const out = [];
+  for (const our of b.rates) {
+    let best = null;
+    for (const { c, d } of list) {
+      const t = c.rates[our.cur];
+      if (t && t.sell && t.sell < our.buy && (!best || t.sell < best.sell))
+        best = { sell: t.sell, bank: c.bank, d, city: c.precision === "city" };
+    }
+    if (best) out.push({ cur: our.cur, our: our.buy, ...best, diff: our.buy - best.sell });
+  }
+  return out.sort((x, y) => y.diff - x.diff);
+}
+
+/** Как часто банк переставляет курс — по нашим замерам раз в 2 часа. */
+function volatilityNote(bank) {
+  const v = typeof VOLATILITY !== "undefined" ? VOLATILITY : {};
+  const days = typeof VOLATILITY_DAYS !== "undefined" ? VOLATILITY_DAYS : 0;
+  const key = Object.keys(v).find(k => normBank(k) === normBank(bank));
+  if (!key || days < 1 || v[key].samples < 8) return "";   // мало данных — молчим
+  const s = v[key].share;
+  const txt = s >= 0.6 ? "курс меняет постоянно"
+    : s >= 0.25 ? "курс меняет несколько раз в день"
+    : s > 0 ? "курс меняет редко" : "курс почти не меняет";
+  return ` <span class="comp-addr">· ${txt}</span>`;
+}
+
 function competitorsBlock(b) {
   const list = COMP_BY_BRANCH[b.num] || [];
   const pois = NORATE_BY_BRANCH[b.num] || [];
   if (!list.length && !pois.length) return "";
   const beating = list.filter(x => beatsAnything(b, x.c));
+  const arb = arbitrageWarnings(b);
 
   // сводка для разговора: по каждой нашей валюте — лучшее предложение рядом
   const ORDER = ["USD", "EUR", "CNY", "AED", "GBP", "CHF", "TRY", "KZT", "AMD", "ILS"];
@@ -542,7 +581,7 @@ function competitorsBlock(b) {
     : "";
 
   const items = list.map(({ c, d }) => `<div style="margin-top:10px">
-      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${c.precision === "city"
+      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${volatilityNote(c.bank)}${c.precision === "city"
         ? ` <span class="comp-addr">курс по городу*</span>`
         : c.precision === "uniform"
           ? ` <span class="comp-addr">курс одинаковый во всех отделениях</span>` : ""}</div>
@@ -551,6 +590,12 @@ function competitorsBlock(b) {
   const hasCity = list.some(x => x.c.precision === "city");
 
   return `<div class="comp-block">
+    ${arb.length ? `<div class="arb">
+      <b>Мы покупаем дороже, чем сосед продаёт</b>
+      ${arb.map(a => `<div>${a.cur}: у нас покупка <b>${fmtRate(a.our)}</b> — ${a.bank}${a.city ? "*" : ""}
+        продаёт по <b>${fmtRate(a.sell)}</b> (${a.d} м). Разница ${fmtRate(a.diff)} ₽ на единицу.</div>`).join("")}
+      <div class="arb-note">Валюту могут купить у соседа и сдать нам — на этом теряем мы. Стоит проверить наш курс.</div>
+    </div>` : ""}
     <div class="comp-head">Конкуренты в 1 км: ${list.length} с курсами${pois.length ? ` · ещё ${pois.length} точек без публикуемых курсов` : ""}
       ${beating.length ? `<span class="comp-warn">· выгоднее нас: ${beating.length}</span>` : `<span class="comp-ok">· наш курс не хуже</span>`}</div>
     <div class="comp-lines">${bestLines}</div>

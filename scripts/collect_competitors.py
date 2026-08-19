@@ -106,7 +106,7 @@ def commit_and_push():
         log("данные не изменились — коммит не нужен")
         return False
     if status.lstrip().startswith("??"):  # файл ещё не в индексе — коммитим как есть
-        git("add", "data/competitors.js")
+        git("add", "data/competitors.js", "data/volatility.js")
         git("-c", "user.name=Alex Pshenichnikov", "-c", "user.email=al.pshen@gmail.com",
             "commit", "-q", "-m", "Auto: refresh competitor rates")
         git("push", "-q")
@@ -121,7 +121,7 @@ def commit_and_push():
         git("checkout", "--", "data/competitors.js", check=False)
         log("изменился только таймстемп — откатили")
         return False
-    git("add", "data/competitors.js")
+    git("add", "data/competitors.js", "data/volatility.js")
     git("-c", "user.name=Alex Pshenichnikov", "-c", "user.email=al.pshen@gmail.com",
         "commit", "-q", "-m", "Auto: refresh competitor rates")
     git("push", "-q")
@@ -157,6 +157,16 @@ def main():
         log("--dry-run: файл не записан")
         return
     write_js(comps)
+
+    # история изменений: сколько раз банк реально переставил курс между нашими замерами
+    sys.path.insert(0, str(HERE))
+    import rate_history as rh
+    state, changed = rh.record(rh.entries_from_competitors(comps),
+                               datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    rh.save_state(state)
+    st, days = rh.write_volatility(state)
+    log(f"история: изменений с прошлого замера {changed}, окно {days:.1f} дн., банков {len(st)}")
+
     commit_and_push()
 
 
