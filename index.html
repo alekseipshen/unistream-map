@@ -128,6 +128,8 @@
     background: #6b7a90;
   }
   .compmarker.beats { background: var(--closed); }
+  /* курс банка по городу, не по офису — рисуем меньше и полупрозрачно */
+  .compmarker.city { opacity: .75; border-width: 1px; }
   .brmarker {
     background: var(--yellow); border: 2px solid var(--blue); border-radius: 8px;
     color: var(--blue); font-weight: 800; font-size: 13px; text-align: center;
@@ -172,6 +174,7 @@
 <script src="data/metro.js"></script>
 <script src="data/competitors.js"></script>
 <script src="data/poi.js"></script>
+<script src="data/bankrates.js"></script>
 <script>
 /* ---------- утилиты ---------- */
 const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
@@ -247,19 +250,32 @@ const compLayer = L.layerGroup();
 /** Пересобирается после подгрузки живых курсов: красный = обыгрывает наше ближайшее отделение. */
 function renderCompMarkers() {
   compLayer.clearLayers();
+  const points = [];
   for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
-    const nearest = BRANCHES.find(b => b.num === c.near[0].num);
-    const beats = nearest && beatsAnything(nearest, c);
+    points.push({ bank: c.bank, addr: c.address || c.name, lat: c.lat, lon: c.lon,
+                  rates: c.rates, near: c.near[0], precision: "office" });
+  }
+  for (const p of (typeof POI !== "undefined" ? POI : [])) {
+    const r = poiRates(p);
+    if (r) points.push({ bank: r.name, addr: p.addr, lat: p.lat, lon: p.lon,
+                         rates: r.rates, near: p.near[0], precision: "city" });
+  }
+  for (const pt of points) {
+    const nearest = BRANCHES.find(b => b.num === pt.near.num);
+    const beats = nearest && beatsAnything(nearest, pt);
+    const size = pt.precision === "office" ? 14 : 11;
     const icon = L.divIcon({
-      className: "", iconSize: [14, 14], iconAnchor: [7, 7],
-      html: `<div class="compmarker${beats ? " beats" : ""}" style="width:14px;height:14px"></div>`
+      className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+      html: `<div class="compmarker${beats ? " beats" : ""}${pt.precision === "city" ? " city" : ""}"
+              style="width:${size}px;height:${size}px"></div>`
     });
-    const curs = Object.keys(c.rates).sort()
-      .map(k => `${k} ${fmtRate(c.rates[k].buy)} / ${fmtRate(c.rates[k].sell)}`).join("<br>");
-    L.marker([c.lat, c.lon], { icon })
-      .bindPopup(`<b>${c.bank}</b><br>${c.address || c.name}<br>
-        <span style="color:#67707f">${c.near[0].d} м до нашего №${c.near[0].num}${beats ? " · курс лучше нашего" : ""}</span><br>
-        <div style="margin-top:4px">${curs}</div>`)
+    const curs = Object.keys(pt.rates).sort()
+      .map(k => `${k} ${fmtRate(pt.rates[k].buy)} / ${fmtRate(pt.rates[k].sell)}`).join("<br>");
+    L.marker([pt.lat, pt.lon], { icon })
+      .bindPopup(`<b>${pt.bank}</b>${pt.addr ? "<br>" + pt.addr : ""}<br>
+        <span style="color:#67707f">${pt.near.d} м до нашего №${pt.near.num}${beats ? " · курс лучше нашего" : ""}</span><br>
+        <div style="margin-top:4px">${curs}</div>
+        ${pt.precision === "city" ? `<div style="color:#67707f;margin-top:3px">курс банка по Москве</div>` : ""}`)
       .addTo(compLayer);
   }
 }
@@ -269,6 +285,7 @@ compLayer.addTo(map);
 /* остальные банки и обменники рядом — без публикуемых курсов */
 const poiLayer = L.layerGroup();
 for (const p of (typeof POI !== "undefined" ? POI : [])) {
+  if (poiRates(p)) continue;  // уже показан в слое конкурентов с курсом
   L.circleMarker([p.lat, p.lon], {
     radius: 3.5, color: "#8a93a3", weight: 1, fillColor: "#b6bdc9", fillOpacity: .9
   }).bindPopup(`<b>${p.n}</b><br>${p.kind === "exchange" ? "обменный пункт" : "банк"}${p.addr ? "<br>" + p.addr : ""}
@@ -403,18 +420,53 @@ function ratesTable(b) {
     ${extra.length ? `<div class="cur-chips">Также обмен: ${extra.join(", ")} — курс по телефону</div>` : ""}`;
 }
 
-/* ---------- конкуренты ---------- */
-const COMP_BY_BRANCH = {};
-for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
-  for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({ c, d: n.d });
+/* ---------- конкуренты ----------
+   Два источника: banki.ru — курс конкретного офиса; mainfin.ru — курс банка по городу
+   (для банков вроде ВТБ и Газпромбанка, которые в banki.ru не публикуются).
+   Городские курсы помечаем звёздочкой — в конкретном офисе может отличаться. */
+/** Курс банка по городу для точки из OSM, если источник его знает.
+    Без внешних const: функция вызывается выше по файлу, при построении слоёв карты. */
+function poiRates(p) {
+  const rates = typeof BANK_RATES !== "undefined" ? BANK_RATES : {};
+  const map = typeof POI_BANK !== "undefined" ? POI_BANK : {};
+  const alias = map[p.n];
+  return alias && rates[alias] ? rates[alias] : null;
 }
-for (const k in COMP_BY_BRANCH) COMP_BY_BRANCH[k].sort((a, b) => a.d - b.d);
 
-const POI_BY_BRANCH = {};
-for (const p of (typeof POI !== "undefined" ? POI : [])) {
-  for (const n of p.near) (POI_BY_BRANCH[n.num] ||= []).push({ p, d: n.d });
+const COMP_BY_BRANCH = {};   // всё, с чем можно сравниться: офисные + городские курсы
+const NORATE_BY_BRANCH = {}; // точки рядом, по которым курса нет вообще
+
+for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
+  for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({
+    c: { bank: c.bank, address: c.address || c.name, rates: c.rates, precision: "office" },
+    d: n.d,
+  });
 }
-for (const k in POI_BY_BRANCH) POI_BY_BRANCH[k].sort((a, b) => a.d - b.d);
+for (const p of (typeof POI !== "undefined" ? POI : [])) {
+  const r = poiRates(p);
+  for (const n of p.near) {
+    if (r) {
+      (COMP_BY_BRANCH[n.num] ||= []).push({
+        c: { bank: r.name, address: p.addr || "", rates: r.rates, precision: "city", at: r.at },
+        d: n.d,
+      });
+    } else {
+      (NORATE_BY_BRANCH[n.num] ||= []).push({ p, d: n.d });
+    }
+  }
+}
+for (const k in COMP_BY_BRANCH) {
+  COMP_BY_BRANCH[k].sort((a, b) => a.d - b.d);
+  // городской курс у всех точек банка одинаковый — в списке держим только ближайшую
+  const seen = new Set();
+  COMP_BY_BRANCH[k] = COMP_BY_BRANCH[k].filter(({ c }) => {
+    if (c.precision !== "city") return true;
+    if (seen.has(c.bank)) return false;
+    seen.add(c.bank);
+    return true;
+  });
+}
+for (const k in NORATE_BY_BRANCH) NORATE_BY_BRANCH[k].sort((a, b) => a.d - b.d);
 
 // объявлена через function, а не const: слой конкурентов на карте строится выше по файлу
 function ourRate(b, cur) { return b.rates.find(r => r.cur === cur); }
@@ -452,7 +504,7 @@ function compRatesTable(b, c) {
 
 function competitorsBlock(b) {
   const list = COMP_BY_BRANCH[b.num] || [];
-  const pois = POI_BY_BRANCH[b.num] || [];
+  const pois = NORATE_BY_BRANCH[b.num] || [];
   if (!list.length && !pois.length) return "";
   const beating = list.filter(x => beatsAnything(b, x.c));
 
@@ -463,13 +515,13 @@ function competitorsBlock(b) {
     for (const { c, d } of list) {
       const t = c.rates[our.cur];
       if (!t) continue;
-      if (t.buy && (!bb || t.buy > bb.v)) bb = { v: t.buy, bank: c.bank, d };
-      if (t.sell && (!bs || t.sell < bs.v)) bs = { v: t.sell, bank: c.bank, d };
+      if (t.buy && (!bb || t.buy > bb.v)) bb = { v: t.buy, bank: c.bank, d, city: c.precision === "city" };
+      if (t.sell && (!bs || t.sell < bs.v)) bs = { v: t.sell, bank: c.bank, d, city: c.precision === "city" };
     }
     if (!bb && !bs) return "";
     const buyWorse = bb && bb.v > our.buy, sellWorse = bs && bs.v < our.sell;
     const cell = (x, worse) => x
-      ? `<span class="${worse ? "comp-warn" : ""}">${fmtRate(x.v)}</span><span class="comp-addr"> ${x.bank}, ${x.d} м</span>`
+      ? `<span class="${worse ? "comp-warn" : ""}">${fmtRate(x.v)}</span><span class="comp-addr"> ${x.bank}${x.city ? "*" : ""}, ${x.d} м</span>`
       : "—";
     return `<tr><td>${our.cur}</td><td>${fmtRate(our.buy)} / ${fmtRate(our.sell)}</td>
       <td>${cell(bb, buyWorse)}</td><td>${cell(bs, sellWorse)}</td></tr>`;
@@ -480,16 +532,19 @@ function competitorsBlock(b) {
     : "";
 
   const items = list.map(({ c, d }) => `<div style="margin-top:10px">
-      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span></div>
-      <div class="comp-addr">${c.address || c.name}</div>
+      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${c.precision === "city"
+        ? ` <span class="comp-addr">курс по городу*</span>` : ""}</div>
+      ${c.address ? `<div class="comp-addr">${c.address}</div>` : ""}
       ${compRatesTable(b, c)}</div>`).join("");
+  const hasCity = list.some(x => x.c.precision === "city");
 
   return `<div class="comp-block">
     <div class="comp-head">Конкуренты в 1 км: ${list.length} с курсами${pois.length ? ` · ещё ${pois.length} точек без публикуемых курсов` : ""}
       ${beating.length ? `<span class="comp-warn">· выгоднее нас: ${beating.length}</span>` : `<span class="comp-ok">· наш курс не хуже</span>`}</div>
     <div class="comp-lines">${bestLines}</div>
+    ${hasCity ? `<div class="rates-note">* курс банка по Москве — в конкретном офисе может отличаться</div>` : ""}
     ${list.length ? `<details class="comp" onclick="event.stopPropagation()"><summary>Курсы конкурентов рядом (${list.length})</summary>${items}
-      <div class="rates-note">Источник: banki.ru, обновляется автоматически${typeof COMPETITORS_AT !== "undefined" ? ` · ${new Date(COMPETITORS_AT).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+      <div class="rates-note">Источники: banki.ru (курс офиса) и mainfin.ru (курс банка по городу), обновляются автоматически${typeof COMPETITORS_AT !== "undefined" ? ` · ${new Date(COMPETITORS_AT).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
       </details>` : ""}
   </div>`;
 }

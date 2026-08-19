@@ -23,19 +23,35 @@ git add -A && git commit -m "refresh data" && git push
 В карточке отделения — сводка «лучше всех покупают / дешевле всех продают» в радиусе 1 км;
 красным подсвечено то, что выгоднее нашего. На карте: красная точка = обыгрывает нас, серая = нет.
 
-- **Курсы конкурентов**: banki.ru, эндпоинт `/products/currencyNodejsApi/getExchangesCoordinates/`
+Два источника курсов, разной точности:
+
+- **Курс конкретного офиса** — banki.ru, эндпоинт `/products/currencyNodejsApi/getExchangesCoordinates/`
   (один запрос на валюту отдаёт все обменные пункты Москвы с координатами и курсом).
-  Обязателен заголовок `X-Requested-With: XMLHttpRequest`, иначе 404.
-- ⚠️ **banki.ru отдаёт данные только на российский IP** (иначе anti-bot заглушка), поэтому HTTP-запрос
-  выполняется на RuVDS через ssh — `scripts/remote_fetch_banki.py`, а обработка и git push на Hetzner.
-- Обновление: systemd timer `unistream-competitors.timer` на Hetzner, каждые 2 часа 09:10–21:10 МСК.
-  Коммитит `data/competitors.js` только при реальном изменении курсов. При сбое пишет в топик Alert (7113).
+  Обязателен заголовок `X-Requested-With: XMLHttpRequest`, иначе 404. ~20 банков.
+- **Курс банка по городу** — mainfin.ru (`scripts/remote_fetch_mainfin.py`), ~50 банков:
+  ВТБ, Газпромбанк, РСХБ, Совкомбанк, Райффайзен, ПСБ, Русский Стандарт, Фора-Банк, Авангард,
+  Уралсиб, Абсолют, Зенит, УБРиР, Экспобанк, Т-Банк и др. — их нет на banki.ru.
+  Привязывается к точкам OSM по названию банка (`ALIASES` в `collect_bank_rates.py` — там,
+  где написание расходится). В интерфейсе помечается «*» и подписью «курс по городу».
+- ⚠️ **banki.ru и mainfin.ru отдают данные только на российский IP** (иначе anti-bot заглушка и 403),
+  поэтому HTTP-запросы выполняются на RuVDS через ssh (`scripts/remote_fetch_*.py`),
+  а обработка и git push — на Hetzner.
+- Обновление: systemd timer `unistream-competitors.timer` на Hetzner, каждые 2 часа 09:10–21:10 МСК;
+  сервис прогоняет оба сборщика. Коммитит только при реальном изменении курсов.
+  При сбое пишет в топик Alert (7113).
 
 ```bash
-python3 scripts/collect_competitors.py --dry-run   # проверить сбор без записи
-systemctl start unistream-competitors.service      # разовый прогон
+python3 scripts/collect_competitors.py --dry-run   # курсы офисов (banki.ru)
+python3 scripts/collect_bank_rates.py --dry-run    # курсы банков по городу (mainfin) + что не совпало
+systemctl start unistream-competitors.service      # разовый прогон обоих
 journalctl -u unistream-competitors.service -n 30  # что было в последний раз
 ```
+
+Банки, по которым курса нет ни в одном источнике (МКБ, Росбанк, ОТП, Кредит Европа, Дом.РФ, БКС и
+длинный хвост мелких), остаются в слое «Другие банки рядом» без курса. Их сайты — JS-приложения
+за антиботом (МКБ отдаёт 403), сертификаты у части банков от Минцифры: для запросов с сервера нужен
+их корневой CA (`gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt`), иначе SSL-ошибка.
+Почта Банк присоединён к ВТБ и своих курсов больше не публикует.
 
 Точки без публикуемых курсов (слой «Другие банки рядом») — из OpenStreetMap, меняются редко:
 
