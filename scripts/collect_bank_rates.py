@@ -47,15 +47,44 @@ def load_js_array(name, const):
     return json.loads(re.search(rf"const {const} = (\[.*?\]);", src, re.S).group(1))
 
 
-def fetch_banks():
-    script = (HERE / "remote_fetch_mainfin.py").read_bytes()
+def remote(script_name, timeout=600):
+    script = (HERE / script_name).read_bytes()
     p = subprocess.run(
         ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST, "python3 -"],
-        input=script, capture_output=True, timeout=300)
+        input=script, capture_output=True, timeout=timeout)
     if p.returncode != 0:
-        raise RuntimeError(f"ssh/mainfin failed: {p.stderr.decode()[:300]}")
-    log("  " + p.stderr.decode().strip())
-    return json.loads(p.stdout.decode())["banks"]
+        raise RuntimeError(f"ssh/{script_name} failed: {p.stderr.decode()[:300]}")
+    return json.loads(p.stdout.decode())
+
+
+def fetch_banks():
+    d = remote("remote_fetch_mainfin.py", timeout=300)
+    log(f"  mainfin: {len(d['banks'])} банков")
+    return d["banks"]
+
+
+def office_rates_by_bank():
+    """Курсы из banki.ru, сгруппированные по банку: там курс каждого офиса отдельно.
+
+    Если у банка во всех офисах Москвы курс совпадает — берём его вместо городского
+    из mainfin: это фактические данные, а не оценка. Заодно избавляет от ситуации,
+    когда рядом две точки одного банка показывают разные цифры из разных источников."""
+    offices = remote("remote_fetch_banki.py")["offices"]
+    grouped = {}
+    for o in offices:
+        for cur, r in o["rates"].items():
+            if r.get("buy") and r.get("sell"):
+                grouped.setdefault(norm(o["bank"]), {}).setdefault(cur, []).append(
+                    (r["buy"], r["sell"]))
+    uniform = {}
+    for bank, curs in grouped.items():
+        rates = {}
+        for cur, vals in curs.items():
+            if len(vals) >= 2 and len(set(vals)) == 1:  # во всех офисах одно и то же
+                rates[cur] = {"buy": vals[0][0], "sell": vals[0][1]}
+        if rates:
+            uniform[bank] = rates
+    return uniform
 
 
 def main():
@@ -87,8 +116,21 @@ def main():
     covered = sum(1 for p in poi if p["n"] in mapping)
     log(f"банков в источнике: {len(banks)} | точек с курсом: {covered} из {len(poi)}"
         f" ({covered * 100 // max(len(poi), 1)}%)")
-    used = {b["alias"]: {"name": b["name"], "rates": b["rates"], "at": b["at"]}
-            for b in banks if b["alias"] in set(mapping.values())}
+
+    uniform = office_rates_by_bank()
+    used, overridden = {}, []
+    for b in banks:
+        if b["alias"] not in set(mapping.values()):
+            continue
+        entry = {"name": b["name"], "rates": dict(b["rates"]), "at": b["at"]}
+        same = uniform.get(norm(b["name"]))
+        if same:
+            entry["rates"].update(same)   # факт с banki.ru важнее оценки по городу
+            entry["same"] = True
+            overridden.append(b["name"])
+        used[b["alias"]] = entry
+    if overridden:
+        log("курс подтверждён офисными данными banki.ru: " + ", ".join(sorted(overridden)))
 
     if dry:
         log("не совпало: " + ", ".join(sorted(unmatched)[:20]))

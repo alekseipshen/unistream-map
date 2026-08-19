@@ -258,12 +258,13 @@ function renderCompMarkers() {
   for (const p of (typeof POI !== "undefined" ? POI : [])) {
     const r = poiRates(p);
     if (r) points.push({ bank: r.name, addr: p.addr, lat: p.lat, lon: p.lon,
-                         rates: r.rates, near: p.near[0], precision: "city" });
+                         rates: r.rates, near: p.near[0],
+                         precision: r.same ? "uniform" : "city" });
   }
   for (const pt of points) {
     const nearest = BRANCHES.find(b => b.num === pt.near.num);
     const beats = nearest && beatsAnything(nearest, pt);
-    const size = pt.precision === "office" ? 14 : 11;
+    const size = pt.precision === "city" ? 11 : 14;  // курс по городу — точка помельче
     const icon = L.divIcon({
       className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
       html: `<div class="compmarker${beats ? " beats" : ""}${pt.precision === "city" ? " city" : ""}"
@@ -446,8 +447,10 @@ for (const p of (typeof POI !== "undefined" ? POI : [])) {
   const r = poiRates(p);
   for (const n of p.near) {
     if (r) {
+      // same = во всех отделениях банка курс совпадает (проверено по офисным данным banki.ru)
       (COMP_BY_BRANCH[n.num] ||= []).push({
-        c: { bank: r.name, address: p.addr || "", rates: r.rates, precision: "city", at: r.at },
+        c: { bank: r.name, address: p.addr || "", rates: r.rates, at: r.at,
+             precision: r.same ? "uniform" : "city" },
         d: n.d,
       });
     } else {
@@ -455,14 +458,21 @@ for (const p of (typeof POI !== "undefined" ? POI : [])) {
     }
   }
 }
+/** «Сбербанк» и «СберБанк», «ПСБ» и «Банк ПСБ» — один и тот же банк в разных источниках. */
+const normBank = s => (s || "").toLowerCase().replace(/ё/g, "е")
+  .replace(/банк|bank/g, "").replace(/[^a-zа-я0-9]/g, "");
+
 for (const k in COMP_BY_BRANCH) {
   COMP_BY_BRANCH[k].sort((a, b) => a.d - b.d);
-  // городской курс у всех точек банка одинаковый — в списке держим только ближайшую
+  const офисные = new Set(COMP_BY_BRANCH[k].filter(x => x.c.precision === "office")
+    .map(x => normBank(x.c.bank)));
   const seen = new Set();
   COMP_BY_BRANCH[k] = COMP_BY_BRANCH[k].filter(({ c }) => {
-    if (c.precision !== "city") return true;
-    if (seen.has(c.bank)) return false;
-    seen.add(c.bank);
+    if (c.precision === "office") return true;
+    const key = normBank(c.bank);
+    // у банка уже есть курс конкретного офиса рядом — городская строка не нужна
+    if (офисные.has(key) || seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }
@@ -533,7 +543,9 @@ function competitorsBlock(b) {
 
   const items = list.map(({ c, d }) => `<div style="margin-top:10px">
       <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${c.precision === "city"
-        ? ` <span class="comp-addr">курс по городу*</span>` : ""}</div>
+        ? ` <span class="comp-addr">курс по городу*</span>`
+        : c.precision === "uniform"
+          ? ` <span class="comp-addr">курс одинаковый во всех отделениях</span>` : ""}</div>
       ${c.address ? `<div class="comp-addr">${c.address}</div>` : ""}
       ${compRatesTable(b, c)}</div>`).join("");
   const hasCity = list.some(x => x.c.precision === "city");
