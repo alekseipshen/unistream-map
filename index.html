@@ -109,6 +109,25 @@
   .actions a { color: var(--blue); font-weight: 600; text-decoration: none; font-size: 14px; }
   .actions a:hover { text-decoration: underline; }
 
+  .comp-block { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .comp-head { font-size: 14px; font-weight: 600; color: #1c2330; }
+  .comp-warn { color: var(--closed); font-weight: 700; }
+  .comp-ok { color: var(--ok); font-weight: 600; }
+  .comp-lines { margin-top: 4px; font-size: 14px; }
+  .comp-lines div { margin: 2px 0; }
+  details.comp summary { cursor: pointer; color: var(--blue); font-weight: 600; font-size: 14px; margin-top: 6px; }
+  table.comp-tbl { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 14px; }
+  table.comp-tbl th, table.comp-tbl td { padding: 3px 6px; border-bottom: 1px solid var(--line); text-align: right; }
+  table.comp-tbl th { color: var(--muted); font-size: 12px; font-weight: 600; }
+  table.comp-tbl td:first-child, table.comp-tbl th:first-child { text-align: left; }
+  table.comp-tbl td.worse { color: var(--closed); font-weight: 700; }
+  .comp-name { font-weight: 600; }
+  .comp-addr { color: var(--muted); font-size: 12.5px; }
+  .compmarker {
+    border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45);
+    background: #6b7a90;
+  }
+  .compmarker.beats { background: var(--closed); }
   .brmarker {
     background: var(--yellow); border: 2px solid var(--blue); border-radius: 8px;
     color: var(--blue); font-weight: 800; font-size: 13px; text-align: center;
@@ -151,6 +170,8 @@
 <script src="vendor/leaflet.js"></script>
 <script src="data/branches.js"></script>
 <script src="data/metro.js"></script>
+<script src="data/competitors.js"></script>
+<script src="data/poi.js"></script>
 <script>
 /* ---------- утилиты ---------- */
 const norm = s => s.toLowerCase().replace(/ё/g, "е").replace(/[-–—]/g, " ").replace(/\s+/g, " ").trim();
@@ -220,8 +241,46 @@ for (const line of METRO_LINES) {
   }
 }
 metroLayer.addTo(map);
-L.control.layers(null, { "Линии и станции метро": metroLayer },
-  { collapsed: false, position: "topright" }).addTo(map);
+
+/* слой конкурентов с курсами: красные — те, кто нас обыгрывает у ближайшего отделения */
+const compLayer = L.layerGroup();
+/** Пересобирается после подгрузки живых курсов: красный = обыгрывает наше ближайшее отделение. */
+function renderCompMarkers() {
+  compLayer.clearLayers();
+  for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
+    const nearest = BRANCHES.find(b => b.num === c.near[0].num);
+    const beats = nearest && beatsAnything(nearest, c);
+    const icon = L.divIcon({
+      className: "", iconSize: [14, 14], iconAnchor: [7, 7],
+      html: `<div class="compmarker${beats ? " beats" : ""}" style="width:14px;height:14px"></div>`
+    });
+    const curs = Object.keys(c.rates).sort()
+      .map(k => `${k} ${fmtRate(c.rates[k].buy)} / ${fmtRate(c.rates[k].sell)}`).join("<br>");
+    L.marker([c.lat, c.lon], { icon })
+      .bindPopup(`<b>${c.bank}</b><br>${c.address || c.name}<br>
+        <span style="color:#67707f">${c.near[0].d} м до нашего №${c.near[0].num}${beats ? " · курс лучше нашего" : ""}</span><br>
+        <div style="margin-top:4px">${curs}</div>`)
+      .addTo(compLayer);
+  }
+}
+renderCompMarkers();
+compLayer.addTo(map);
+
+/* остальные банки и обменники рядом — без публикуемых курсов */
+const poiLayer = L.layerGroup();
+for (const p of (typeof POI !== "undefined" ? POI : [])) {
+  L.circleMarker([p.lat, p.lon], {
+    radius: 3.5, color: "#8a93a3", weight: 1, fillColor: "#b6bdc9", fillOpacity: .9
+  }).bindPopup(`<b>${p.n}</b><br>${p.kind === "exchange" ? "обменный пункт" : "банк"}${p.addr ? "<br>" + p.addr : ""}
+    <br><span style="color:#67707f">${p.near[0].d} м до нашего №${p.near[0].num} · курс не публикуется</span>`)
+    .addTo(poiLayer);
+}
+
+L.control.layers(null, {
+  "Линии и станции метро": metroLayer,
+  "Конкуренты с курсами": compLayer,
+  "Другие банки рядом": poiLayer,
+}, { collapsed: false, position: "topright" }).addTo(map);
 
 const brMarkers = {};
 for (const b of BRANCHES) {
@@ -344,6 +403,97 @@ function ratesTable(b) {
     ${extra.length ? `<div class="cur-chips">Также обмен: ${extra.join(", ")} — курс по телефону</div>` : ""}`;
 }
 
+/* ---------- конкуренты ---------- */
+const COMP_BY_BRANCH = {};
+for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
+  for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({ c, d: n.d });
+}
+for (const k in COMP_BY_BRANCH) COMP_BY_BRANCH[k].sort((a, b) => a.d - b.d);
+
+const POI_BY_BRANCH = {};
+for (const p of (typeof POI !== "undefined" ? POI : [])) {
+  for (const n of p.near) (POI_BY_BRANCH[n.num] ||= []).push({ p, d: n.d });
+}
+for (const k in POI_BY_BRANCH) POI_BY_BRANCH[k].sort((a, b) => a.d - b.d);
+
+// объявлена через function, а не const: слой конкурентов на карте строится выше по файлу
+function ourRate(b, cur) { return b.rates.find(r => r.cur === cur); }
+
+/** Где конкурент выгоднее нас: покупает дороже (клиент сдаёт) или продаёт дешевле (клиент берёт). */
+function compare(b, c) {
+  const better = [];
+  for (const cur of Object.keys(c.rates)) {
+    const our = ourRate(b, cur), their = c.rates[cur];
+    if (!our) continue;
+    if (their.buy && our.buy && their.buy > our.buy)
+      better.push({ cur, kind: "buy", their: their.buy, our: our.buy });
+    if (their.sell && our.sell && their.sell < our.sell)
+      better.push({ cur, kind: "sell", their: their.sell, our: our.sell });
+  }
+  return better;
+}
+
+function beatsAnything(b, c) { return compare(b, c).length > 0; }
+
+function compRatesTable(b, c) {
+  const curs = Object.keys(c.rates).sort();
+  const rows = curs.map(cur => {
+    const our = ourRate(b, cur), t = c.rates[cur];
+    const buyWorse = our && t.buy && t.buy > our.buy;
+    const sellWorse = our && t.sell && t.sell < our.sell;
+    return `<tr><td>${cur}</td>
+      <td class="${buyWorse ? "worse" : ""}">${t.buy ? fmtRate(t.buy) : "—"}</td>
+      <td class="${sellWorse ? "worse" : ""}">${t.sell ? fmtRate(t.sell) : "—"}</td>
+      <td>${our ? fmtRate(our.buy) + " / " + fmtRate(our.sell) : "нет"}</td></tr>`;
+  }).join("");
+  return `<table class="comp-tbl">
+    <tr><th>Валюта</th><th>Покупка</th><th>Продажа</th><th>у нас</th></tr>${rows}</table>`;
+}
+
+function competitorsBlock(b) {
+  const list = COMP_BY_BRANCH[b.num] || [];
+  const pois = POI_BY_BRANCH[b.num] || [];
+  if (!list.length && !pois.length) return "";
+  const beating = list.filter(x => beatsAnything(b, x.c));
+
+  // сводка для разговора: по каждой нашей валюте — лучшее предложение рядом
+  const ORDER = ["USD", "EUR", "CNY", "AED", "GBP", "CHF", "TRY", "KZT", "AMD", "ILS"];
+  const summary = b.rates.map(our => {
+    let bb = null, bs = null;
+    for (const { c, d } of list) {
+      const t = c.rates[our.cur];
+      if (!t) continue;
+      if (t.buy && (!bb || t.buy > bb.v)) bb = { v: t.buy, bank: c.bank, d };
+      if (t.sell && (!bs || t.sell < bs.v)) bs = { v: t.sell, bank: c.bank, d };
+    }
+    if (!bb && !bs) return "";
+    const buyWorse = bb && bb.v > our.buy, sellWorse = bs && bs.v < our.sell;
+    const cell = (x, worse) => x
+      ? `<span class="${worse ? "comp-warn" : ""}">${fmtRate(x.v)}</span><span class="comp-addr"> ${x.bank}, ${x.d} м</span>`
+      : "—";
+    return `<tr><td>${our.cur}</td><td>${fmtRate(our.buy)} / ${fmtRate(our.sell)}</td>
+      <td>${cell(bb, buyWorse)}</td><td>${cell(bs, sellWorse)}</td></tr>`;
+  }).join("");
+  const bestLines = summary
+    ? `<table class="comp-tbl"><tr><th>Валюта</th><th>У нас пок/прод</th>
+         <th>Лучше всех покупают</th><th>Дешевле всех продают</th></tr>${summary}</table>`
+    : "";
+
+  const items = list.map(({ c, d }) => `<div style="margin-top:10px">
+      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span></div>
+      <div class="comp-addr">${c.address || c.name}</div>
+      ${compRatesTable(b, c)}</div>`).join("");
+
+  return `<div class="comp-block">
+    <div class="comp-head">Конкуренты в 1 км: ${list.length} с курсами${pois.length ? ` · ещё ${pois.length} точек без публикуемых курсов` : ""}
+      ${beating.length ? `<span class="comp-warn">· выгоднее нас: ${beating.length}</span>` : `<span class="comp-ok">· наш курс не хуже</span>`}</div>
+    <div class="comp-lines">${bestLines}</div>
+    ${list.length ? `<details class="comp" onclick="event.stopPropagation()"><summary>Курсы конкурентов рядом (${list.length})</summary>${items}
+      <div class="rates-note">Источник: banki.ru, обновляется автоматически${typeof COMPETITORS_AT !== "undefined" ? ` · ${new Date(COMPETITORS_AT).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
+      </details>` : ""}
+  </div>`;
+}
+
 function card(b) {
   const w = station ? walkInfo(b.d) : null;
   const route = station
@@ -359,6 +509,7 @@ function card(b) {
     <div class="kv">График: <b>${hoursText(b)}</b>${b.hoursNotes ? ` · перерыв: ${b.hoursNotes.replace(/^перерыв[а-яё]*\s*:?\s*/i, "").replace(/\n/g, ", ")}` : ""}</div>
     ${b.notes ? `<details class="howto" onclick="event.stopPropagation()"><summary>Как найти</summary><p>${b.notes}</p></details>` : ""}
     ${ratesTable(b)}
+    ${competitorsBlock(b)}
     <div class="actions">
       <a href="${route}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${station ? "Маршрут от метро в Яндекс Картах" : "Открыть в Яндекс Картах"}</a>
       <a href="https://unistream.ru/exchange?branch=${b.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Курсы на unistream.ru</a>
@@ -398,6 +549,7 @@ async function refreshRates() {
   document.getElementById("ratesStamp").textContent = ok
     ? `Курсы обновлены в ${t}${ok < BRANCHES.length ? ` (${ok}/${BRANCHES.length})` : ""}`
     : `Live-курсы недоступны — показаны сохранённые от ${new Date(DATA_BUILT_AT).toLocaleDateString("ru-RU")}`;
+  renderCompMarkers();
   renderPanel();
 }
 document.getElementById("refreshBtn").addEventListener("click", refreshRates);
