@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ЮНИСТРИМ — таблица курсов по отделениям</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23ffd400'/><text x='50' y='72' font-size='60' text-anchor='middle' font-family='Arial' font-weight='bold' fill='%231a3e8c'>Ю</text></svg>">
+<style>
+  :root {
+    --blue: #1a3e8c; --blue-dark: #12295e; --yellow: #ffd400;
+    --bg: #f2f4f8; --card: #fff; --line: #dfe4ec;
+    --ok: #178a3c; --bad: #c62828; --muted: #67707f;
+    --bad-bg: #fdecec; --ok-bg: #e8f6ed;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font: 15px/1.4 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: #1c2330; }
+  header { background: var(--blue); color: #fff; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header .logo { background: var(--yellow); color: var(--blue); font-weight: 800; border-radius: 8px; padding: 3px 10px; font-size: 18px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  .tabs { display: flex; gap: 4px; margin-left: 8px; }
+  .tabs a {
+    color: #fff; text-decoration: none; padding: 5px 14px; border-radius: 8px 8px 0 0;
+    font-size: 14px; font-weight: 600; background: rgba(255,255,255,.12);
+  }
+  .tabs a.active { background: var(--bg); color: var(--blue); }
+  .status { margin-left: auto; font-size: 13px; opacity: .9; }
+  .status button { margin-left: 8px; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; border-radius: 6px; padding: 3px 10px; cursor: pointer; font-size: 13px; }
+
+  .toolbar { padding: 10px 16px; background: var(--blue-dark); color: #fff; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .toolbar select, .toolbar button {
+    font-size: 14px; padding: 5px 10px; border-radius: 7px; border: 1px solid #c9d2e2; background: #fff; color: #1c2330;
+  }
+  .toolbar label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .wrap { padding: 14px 16px 40px; }
+  .legend { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin: 0 3px 0 10px; }
+
+  table.grid { border-collapse: collapse; width: 100%; background: var(--card); font-size: 14px; }
+  table.grid th, table.grid td { border: 1px solid var(--line); padding: 6px 9px; text-align: right; white-space: nowrap; }
+  table.grid th { background: var(--blue); color: #fff; font-weight: 600; font-size: 13px; position: sticky; top: 0; z-index: 2; }
+  table.grid td.l, table.grid th.l { text-align: left; white-space: normal; }
+  table.grid tr.branch { background: #eef2fa; cursor: pointer; }
+  table.grid tr.branch:hover { background: #e3eaf7; }
+  table.grid tr.branch td { font-weight: 600; }
+  table.grid td.bad { background: var(--bad-bg); color: var(--bad); font-weight: 700; }
+  table.grid td.good { background: var(--ok-bg); color: var(--ok); }
+  table.grid tr.comp td { font-size: 13.5px; }
+  table.grid tr.comp td.l:first-child { padding-left: 26px; }
+  .pill { font-size: 12px; padding: 1px 8px; border-radius: 20px; font-weight: 700; }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .muted { color: var(--muted); font-weight: 400; }
+  .arb-row td { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
+  .scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line); }
+  .caret { display: inline-block; width: 12px; color: var(--blue); }
+  @media print {
+    header, .toolbar, .legend { display: none; }
+    body { background: #fff; }
+    table.grid th { position: static; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">ЮНИСТРИМ</span>
+  <h1>Курсы по отделениям</h1>
+  <nav class="tabs">
+    <a href="index.html">Карта</a>
+    <a href="table.html" class="active">Таблица</a>
+  </nav>
+  <span class="status"><span id="stamp">Курсы: загрузка…</span><button id="refresh">Обновить</button></span>
+</header>
+
+<div class="toolbar">
+  <label>Валюта
+    <select id="cur"></select>
+  </label>
+  <label><input type="checkbox" id="onlyWorse"> только там, где у соседей выгоднее</label>
+  <label><input type="checkbox" id="expandAll"> раскрыть все отделения</label>
+  <button id="csv">Скачать CSV</button>
+  <button id="print">Печать</button>
+</div>
+
+<div class="wrap">
+  <div class="legend">
+    Сравнение с нашим курсом:
+    <span class="sw" style="background:var(--bad-bg);border:1px solid #f3c2c2"></span> у соседа выгоднее для клиента
+    <span class="sw" style="background:var(--ok-bg);border:1px solid #bfe3cc"></span> наш курс не хуже.
+    Клиент выигрывает, когда <b>покупают дороже</b> (он сдаёт валюту) или <b>продают дешевле</b> (он покупает валюту).
+  </div>
+  <div class="scroll"><table class="grid" id="tbl"></table></div>
+</div>
+
+<script src="data/branches.js"></script>
+<script src="data/competitors.js"></script>
+<script src="data/offices_mainfin.js"></script>
+<script src="data/poi.js"></script>
+<script src="data/bankrates.js"></script>
+<script>
+const fmt = v => v == null ? "—" : (Math.round(v * 100) / 100).toLocaleString("ru-RU");
+const normBank = s => (s || "").toLowerCase().replace(/ё/g, "е").replace(/банк|bank/g, "").replace(/[^a-zа-я0-9]/g, "");
+
+/* ---------- собираем соседей по отделениям: те же источники, что на карте ---------- */
+function poiRates(p) {
+  const r = typeof BANK_RATES !== "undefined" ? BANK_RATES : {};
+  const m = typeof POI_BANK !== "undefined" ? POI_BANK : {};
+  return m[p.n] && r[m[p.n]] ? r[m[p.n]] : null;
+}
+const RIVALS = {}, NORATE = {};
+for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : []))
+  for (const n of c.near) (RIVALS[n.num] ||= []).push({
+    bank: c.bank, addr: c.address || c.name, d: n.d, rates: c.rates,
+    kind: "курс отделения", at: (c.at || "").slice(11, 16), lat: c.lat, lon: c.lon });
+for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []))
+  for (const n of o.near) (RIVALS[n.num] ||= []).push({
+    bank: o.bank, addr: o.address, d: n.d, rates: o.rates,
+    kind: "курс отделения", at: (o.at || "").slice(11, 16), lat: o.lat, lon: o.lon });
+for (const p of (typeof POI !== "undefined" ? POI : [])) {
+  const r = poiRates(p);
+  for (const n of p.near) {
+    if (r) (RIVALS[n.num] ||= []).push({
+      bank: r.name, addr: p.addr || "", d: n.d, rates: r.rates,
+      kind: r.same ? "курс банка" : "курс банка по городу",
+      at: (r.at || "").slice(11, 16), lat: p.lat, lon: p.lon });
+    else NORATE[n.num] = (NORATE[n.num] || 0) + 1;
+  }
+}
+for (const k in RIVALS) {
+  RIVALS[k].sort((a, b) => a.d - b.d);
+  const office = new Set(RIVALS[k].filter(x => x.kind === "курс отделения").map(x => normBank(x.bank)));
+  const seen = new Set();
+  RIVALS[k] = RIVALS[k].filter(x => {
+    if (x.kind === "курс отделения") return true;
+    const key = normBank(x.bank);
+    if (office.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/* ---------- живые курсы наших отделений ---------- */
+const OURS = {};
+for (const b of BRANCHES) OURS[b.num] = Object.fromEntries(b.rates.map(r => [r.cur, { buy: r.buy, sell: r.sell, at: r.at }]));
+
+async function refresh() {
+  document.getElementById("stamp").textContent = "Курсы: обновляю…";
+  const jobs = BRANCHES.map(async b => {
+    const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
+    const d = await r.json();
+    OURS[b.num] = Object.fromEntries((d.exchangeRates || []).map(x =>
+      [x.currency, { buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }]));
+  });
+  const res = await Promise.allSettled(jobs);
+  const ok = res.filter(r => r.status === "fulfilled").length;
+  document.getElementById("stamp").textContent = ok
+    ? `Курсы обновлены в ${new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" })}`
+    : "Live-курсы недоступны — показаны сохранённые";
+  render();
+}
+
+/* ---------- отрисовка ---------- */
+const state = { cur: "USD", onlyWorse: false, expanded: new Set() };
+
+const curSel = document.getElementById("cur");
+const allCurs = [...new Set(BRANCHES.flatMap(b => b.rates.map(r => r.cur)))];
+for (const c of ["USD", "EUR", ...allCurs.filter(c => !["USD", "EUR"].includes(c))]) {
+  const o = document.createElement("option");
+  o.value = o.textContent = c;
+  curSel.appendChild(o);
+}
+curSel.value = "USD";
+
+function rivalsFor(num) {
+  const cur = state.cur;
+  const our = OURS[num][cur];
+  return (RIVALS[num] || [])
+    .filter(r => r.rates[cur])
+    .map(r => {
+      const t = r.rates[cur];
+      return { ...r, buy: t.buy, sell: t.sell,
+        buyBetter: our && t.buy && t.buy > our.buy,
+        sellBetter: our && t.sell && t.sell < our.sell };
+    })
+    .filter(r => !state.onlyWorse || r.buyBetter || r.sellBetter);
+}
+
+function render() {
+  const cur = state.cur;
+  const rows = [`<tr>
+    <th class="l">Отделение</th><th class="l">Адрес</th><th class="l">Метро</th>
+    <th>Соседей<br>с курсом</th><th>Из них<br>выгоднее</th>
+    <th>Мы покупаем</th><th>Мы продаём</th>
+    <th>Лучшая покупка<br>рядом</th><th>Дешевле всех<br>продают</th>
+    <th class="l">Комментарий</th></tr>`];
+
+  for (const b of BRANCHES) {
+    const our = OURS[b.num][cur];
+    const list = rivalsFor(b.num);
+    const better = list.filter(r => r.buyBetter || r.sellBetter).length;
+    const bb = list.filter(r => r.buy).sort((x, y) => y.buy - x.buy)[0];
+    const bs = list.filter(r => r.sell).sort((x, y) => x.sell - y.sell)[0];
+    const open = state.expanded.has(b.num);
+
+    let note = "", noteCls = "";
+    if (!our) { note = `${cur} в отделении не меняют`; }
+    else if (bs && bs.sell < our.buy) {
+      note = `сосед продаёт по ${fmt(bs.sell)} — дешевле, чем мы покупаем (${fmt(our.buy)})`;
+      noteCls = "bad";
+    } else if (!better) { note = "наш курс не хуже соседей"; noteCls = "good"; }
+    else { note = `у ${better} из ${list.length} курс выгоднее для клиента`; }
+
+    rows.push(`<tr class="branch" data-num="${b.num}">
+      <td class="l"><span class="caret">${open ? "▾" : "▸"}</span> № ${b.num}</td>
+      <td class="l">${b.address}</td>
+      <td class="l muted">${b.metro.join(", ") || "—"}</td>
+      <td>${list.length}${NORATE[b.num] ? `<span class="muted"> +${NORATE[b.num]} без курсов</span>` : ""}</td>
+      <td>${better ? `<span class="pill bad">${better}</span>` : `<span class="pill ok">0</span>`}</td>
+      <td>${our ? fmt(our.buy) : "—"}</td>
+      <td>${our ? fmt(our.sell) : "—"}</td>
+      <td class="${bb && our && bb.buy > our.buy ? "bad" : "good"}">${bb ? `${fmt(bb.buy)} <span class="muted">${bb.bank}</span>` : "—"}</td>
+      <td class="${bs && our && bs.sell < our.sell ? "bad" : "good"}">${bs ? `${fmt(bs.sell)} <span class="muted">${bs.bank}</span>` : "—"}</td>
+      <td class="l ${noteCls}">${note}</td>
+    </tr>`);
+
+    if (open) {
+      rows.push(`<tr class="comp"><td class="l muted">Банк</td><td class="l muted">Адрес</td>
+        <td class="l muted">Данные</td><td class="muted">Метров</td><td class="muted">Обновлён</td>
+        <td class="muted">Покупает</td><td class="muted">Продаёт</td><td colspan="3" class="l muted">Отличие от нашего курса</td></tr>`);
+      for (const r of list) {
+        const diffs = [];
+        if (r.buyBetter) diffs.push(`покупает дороже на ${fmt(r.buy - our.buy)}`);
+        if (r.sellBetter) diffs.push(`продаёт дешевле на ${fmt(our.sell - r.sell)}`);
+        rows.push(`<tr class="comp">
+          <td class="l">${r.bank}</td>
+          <td class="l muted">${r.addr || "—"}</td>
+          <td class="l muted">${r.kind}</td>
+          <td>${r.d}</td>
+          <td class="muted">${r.at || "—"}</td>
+          <td class="${r.buyBetter ? "bad" : "good"}">${fmt(r.buy)}</td>
+          <td class="${r.sellBetter ? "bad" : "good"}">${fmt(r.sell)}</td>
+          <td class="l" colspan="3">${diffs.join(", ") || "не выгоднее нашего"}</td>
+        </tr>`);
+      }
+      if (!list.length) rows.push(`<tr class="comp"><td colspan="10" class="l muted">Соседей с курсом ${cur} рядом нет</td></tr>`);
+    }
+  }
+  document.getElementById("tbl").innerHTML = rows.join("");
+  document.querySelectorAll("tr.branch").forEach(tr => tr.addEventListener("click", () => {
+    const n = tr.dataset.num;
+    state.expanded.has(n) ? state.expanded.delete(n) : state.expanded.add(n);
+    render();
+  }));
+}
+
+function toCSV() {
+  const cur = state.cur;
+  const out = [["Отделение", "Адрес отделения", "Банк рядом", "Адрес банка", "Тип данных",
+                "Метров", "Валюта", "Покупает", "Продаёт", "Наш курс покупки", "Наш курс продажи"]];
+  for (const b of BRANCHES) {
+    const our = OURS[b.num][cur];
+    for (const r of rivalsFor(b.num))
+      out.push([`№ ${b.num}`, b.address, r.bank, r.addr, r.kind, r.d, cur,
+                r.buy, r.sell, our ? our.buy : "", our ? our.sell : ""]);
+  }
+  const csv = out.map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `курсы_рядом_${cur}_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+}
+
+curSel.addEventListener("change", () => { state.cur = curSel.value; render(); });
+document.getElementById("onlyWorse").addEventListener("change", e => { state.onlyWorse = e.target.checked; render(); });
+document.getElementById("expandAll").addEventListener("change", e => {
+  state.expanded = e.target.checked ? new Set(BRANCHES.map(b => b.num)) : new Set();
+  render();
+});
+document.getElementById("csv").addEventListener("click", toCSV);
+document.getElementById("print").addEventListener("click", () => window.print());
+document.getElementById("refresh").addEventListener("click", refresh);
+setInterval(refresh, 10 * 60 * 1000);
+
+render();
+refresh();
+</script>
+</body>
+</html>

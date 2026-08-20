@@ -28,6 +28,12 @@
     border-radius: 8px; padding: 3px 10px; font-size: 18px; letter-spacing: .5px;
   }
   header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .tabs { display: flex; gap: 4px; margin-left: 8px; }
+  .tabs a {
+    color: #fff; text-decoration: none; padding: 5px 14px; border-radius: 8px 8px 0 0;
+    font-size: 14px; font-weight: 600; background: rgba(255,255,255,.12);
+  }
+  .tabs a.active { background: var(--bg); color: var(--blue); }
   header .rates-status { margin-left: auto; font-size: 13px; opacity: .85; }
   header .rates-status button {
     margin-left: 8px; border: 1px solid rgba(255,255,255,.5); background: transparent;
@@ -167,6 +173,10 @@
 <header>
   <span class="logo">ЮНИСТРИМ</span>
   <h1>Обменные пункты — Москва</h1>
+  <nav class="tabs">
+    <a href="index.html" class="active">Карта</a>
+    <a href="table.html">Таблица</a>
+  </nav>
   <span class="rates-status"><span id="ratesStamp">Курсы: загрузка…</span><button id="refreshBtn">Обновить</button></span>
 </header>
 
