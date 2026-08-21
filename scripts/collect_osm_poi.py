@@ -115,6 +115,29 @@ def main():
     # у большинства точек OSM адреса нет — добираем обратным геокодированием (кэш на диске)
     sys.path.insert(0, str(HERE))
     import geocode
+
+    # точки, которых нет ни в OSM, ни у агрегаторов — заводим руками (poi-manual.json)
+    manual_path = HERE / "poi-manual.json"
+    if manual_path.exists():
+        manual = json.loads(manual_path.read_text())
+        coords = geocode.geocode_many([m["geocode"] for m in manual])
+        for m in manual:
+            c = coords.get(m["geocode"])
+            if not c:
+                print(f"  ручная точка не геокодировалась: {m['geocode']}", file=sys.stderr)
+                continue
+            near = sorted(({"num": b["num"], "d": round(dist_m(b["lat"], b["lon"], c["lat"], c["lon"]))}
+                           for b in branches
+                           if dist_m(b["lat"], b["lon"], c["lat"], c["lon"]) <= RADIUS_M),
+                          key=lambda x: x["d"])
+            if not near:
+                print(f"  ручная точка вне радиуса: {m['n']} — {m['addr']}", file=sys.stderr)
+                continue
+            out.append({"n": m["n"], "kind": m.get("kind", "bank"), "lat": c["lat"],
+                        "lon": c["lon"], "addr": m.get("addr", ""), "near": near})
+            print(f"  ручная точка: {m['n']} — {m['addr']} → №{near[0]['num']} ({near[0]['d']} м)",
+                  file=sys.stderr)
+
     missing = [(i, p["lat"], p["lon"]) for i, p in enumerate(out) if not p["addr"]]
     if missing:
         print(f"без адреса: {len(missing)}, запрашиваем…", file=sys.stderr)
