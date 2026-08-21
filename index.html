@@ -384,7 +384,7 @@ for (const b of DUTY) addBranchMarker(b, dutyLayer);
 if (dutyOn) dutyLayer.addTo(map);
 
 L.control.layers(null, {
-  [`Дежурные отделения (${DUTY.length})`]: dutyLayer,
+  [`Отделения УРКО (${DUTY.length})`]: dutyLayer,
   "Линии и станции метро": metroLayer,
   "Конкуренты с курсами": compLayer,
   "Другие банки рядом": poiLayer,
@@ -722,7 +722,7 @@ function card(b) {
   return `<div class="card ${selectedBranch === b.num ? "selected" : ""}" id="card${b.num}" onclick="selectBranch('${b.num}', false); map.setView([${b.lat}, ${b.lon}], 15);">
     <div class="toprow">
       <span class="num${b.duty ? " duty" : ""}">№ ${b.num}</span>
-      ${b.duty ? `<span class="duty-tag">дежурное${b.city && b.city !== "Москва" ? " · " + b.city : ""}</span>` : ""}
+      ${b.duty ? `<span class="duty-tag">УРКО${b.city && b.city !== "Москва" ? " · " + b.city : ""}</span>` : ""}
       ${w ? `<span class="walk">${w.txt}</span>` : ""}
     </div>
     <div class="addr">${b.address}</div>

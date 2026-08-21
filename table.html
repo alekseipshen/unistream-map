@@ -78,7 +78,7 @@
   <label>Валюта
     <select id="cur"></select>
   </label>
-  <label><input type="checkbox" id="duty"> показывать дежурные отделения</label>
+  <label><input type="checkbox" id="duty"> показывать отделения УРКО</label>
   <label><input type="checkbox" id="onlyWorse"> только там, где у соседей выгоднее</label>
   <label><input type="checkbox" id="expandAll"> раскрыть все отделения</label>
   <button id="csv">Скачать CSV</button>
@@ -253,7 +253,7 @@ function render() {
 
     rows.push(`<tr class="branch" data-num="${b.num}">
       <td class="l"><span class="caret">${open ? "▾" : "▸"}</span> № ${b.num}${
-        b.duty ? ` <span class="pill ok" style="background:#e8edf7;color:var(--blue)">дежурное</span>` : ""}</td>
+        b.duty ? ` <span class="pill ok" style="background:#e8edf7;color:var(--blue)">УРКО</span>` : ""}</td>
       <td class="l">${b.address}</td>
       <td class="l muted">${b.metro.join(", ") || "—"}</td>
       <td>${list.length}${NORATE[b.num] ? `<span class="muted"> +${NORATE[b.num]} без курсов</span>` : ""}${
