@@ -231,6 +231,26 @@ function hoursText(b) {
 }
 const fmtRate = v => (Math.round(v * 100) / 100).toLocaleString("ru-RU");
 
+/** Источники дают время по-разному: ISO у banki.ru и «21.08.2026 11:00» у mainfin. */
+function parseAt(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{2})\.(\d{2})\.(\d{4})[ T](\d{2}):(\d{2})/);
+  const d = m ? new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00+03:00`) : new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+/** Насколько свежий курс: подпись + признак «пора не доверять». */
+function freshness(at) {
+  const d = parseAt(at);
+  if (!d) return { text: "время обновления неизвестно", stale: true };
+  const hours = (Date.now() - d) / 3600e3;
+  const time = d.toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" });
+  const today = new Date().toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })
+    === d.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" });
+  const day = d.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit" });
+  return { text: today ? `курс от ${time}` : `курс от ${day} ${time}`, stale: hours > 3 };
+}
+
 /* ---------- состояние ---------- */
 let station = null;        // выбранная станция {n, lat, lng, l}
 let selectedBranch = null; // подсвеченный офис
@@ -277,16 +297,16 @@ function renderCompMarkers() {
   const points = [];
   for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
     points.push({ bank: c.bank, addr: c.address || c.name, lat: c.lat, lon: c.lon,
-                  rates: c.rates, near: c.near[0], precision: "office" });
+                  rates: c.rates, near: c.near[0], precision: "office", at: c.at });
   }
   for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
     points.push({ bank: o.bank, addr: o.address, lat: o.lat, lon: o.lon,
-                  rates: o.rates, near: o.near[0], precision: "office" });
+                  rates: o.rates, near: o.near[0], precision: "office", at: o.at });
   }
   for (const p of (typeof POI !== "undefined" ? POI : [])) {
     const r = poiRates(p);
     if (r) points.push({ bank: r.name, addr: p.addr, lat: p.lat, lon: p.lon,
-                         rates: r.rates, near: p.near[0],
+                         rates: r.rates, near: p.near[0], at: r.at,
                          precision: r.same ? "uniform" : "city" });
   }
   for (const pt of points) {
@@ -304,7 +324,9 @@ function renderCompMarkers() {
       .bindPopup(`<b>${pt.bank}</b>${pt.addr ? "<br>" + pt.addr : ""}<br>
         <span style="color:#67707f">${pt.near.d} м до нашего №${pt.near.num}${beats ? " · курс лучше нашего" : ""}</span><br>
         <div style="margin-top:4px">${curs}</div>
-        ${pt.precision === "city" ? `<div style="color:#67707f;margin-top:3px">курс банка по Москве</div>` : ""}`)
+        <div style="margin-top:3px" class="${freshness(pt.at).stale ? "stale" : ""}"
+             ${freshness(pt.at).stale ? "" : 'style="color:#67707f;margin-top:3px"'}>${freshness(pt.at).text}</div>
+        ${pt.precision === "city" ? `<div style="color:#67707f">курс банка по Москве</div>` : ""}`)
       .addTo(compLayer);
   }
 }
@@ -468,7 +490,7 @@ const NORATE_BY_BRANCH = {}; // точки рядом, по которым ку�
 for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
   for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({
     c: { bank: c.bank, address: c.address || c.name, rates: c.rates, precision: "office",
-         lat: c.lat, lon: c.lon },
+         lat: c.lat, lon: c.lon, at: c.at },
     d: n.d,
   });
 }
@@ -476,7 +498,7 @@ for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
 for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
   for (const n of o.near) (COMP_BY_BRANCH[n.num] ||= []).push({
     c: { bank: o.bank, address: o.address, rates: o.rates, precision: "office",
-         lat: o.lat, lon: o.lon },
+         lat: o.lat, lon: o.lon, at: o.at },
     d: n.d,
   });
 }
@@ -624,7 +646,8 @@ function competitorsBlock(b) {
     : "";
 
   const items = list.map(({ c, d }) => `<div class="comp-item" onclick="showCompetitor(${c.lat}, ${c.lon}); event.stopPropagation()" title="Показать на карте">
-      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>${volatilityNote(c.bank)}${c.precision === "city"
+      <div class="comp-name">${c.bank} <span class="kv">· ${d} м</span>
+        <span class="${freshness(c.at).stale ? "stale" : "comp-addr"}">· ${freshness(c.at).text}</span>${volatilityNote(c.bank)}${c.precision === "city"
         ? ` <span class="comp-addr">курс по городу*</span>`
         : c.precision === "uniform"
           ? ` <span class="comp-addr">курс одинаковый во всех отделениях</span>` : ""}</div>

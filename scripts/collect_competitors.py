@@ -167,7 +167,8 @@ def main():
     st, days = rh.write_volatility(state)
     log(f"история: изменений с прошлого замера {changed}, окно {days:.1f} дн., банков {len(st)}")
 
-    commit_and_push()
+    if "--no-commit" not in sys.argv:   # под systemd публикует publish.py — одним коммитом
+        commit_and_push()
 
 
 if __name__ == "__main__":

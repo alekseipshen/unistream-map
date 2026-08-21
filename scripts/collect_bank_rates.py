@@ -210,26 +210,9 @@ def main():
         f"// generated {stamp}\nconst OFFICES_MF = "
         + json.dumps(mf, ensure_ascii=False, separators=(",", ":")) + ";\n")
 
-    status = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain", "--",
-                             "data/bankrates.js"], capture_output=True, text=True).stdout
-    if not status.strip():
-        log("без изменений")
+    if "--no-commit" in sys.argv:   # под systemd публикует publish.py — одним коммитом
         return
-    body = subprocess.run(["git", "-C", str(ROOT), "diff", "--", "data/bankrates.js"],
-                          capture_output=True, text=True).stdout
-    meaningful = [l for l in body.splitlines()
-                  if l.startswith(("+", "-")) and not l.startswith(("+++", "---"))
-                  and "generated" not in l and "BANK_RATES_AT" not in l]
-    if body and not meaningful:
-        subprocess.run(["git", "-C", str(ROOT), "checkout", "--", "data/bankrates.js"])
-        log("изменился только таймстемп — откатили")
-        return
-    subprocess.run(["git", "-C", str(ROOT), "add", "data/bankrates.js"])
-    subprocess.run(["git", "-C", str(ROOT), "-c", "user.name=Alex Pshenichnikov",
-                    "-c", "user.email=al.pshen@gmail.com", "commit", "-q",
-                    "-m", "Auto: refresh city-level bank rates"])
-    subprocess.run(["git", "-C", str(ROOT), "push", "-q"])
-    log("запушено")
+    subprocess.run([sys.executable, str(HERE / "publish.py")])
 
 
 if __name__ == "__main__":

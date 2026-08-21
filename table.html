@@ -52,6 +52,7 @@
   .pill.bad { background: var(--bad-bg); color: var(--bad); }
   .pill.ok { background: var(--ok-bg); color: var(--ok); }
   .muted { color: var(--muted); font-weight: 400; }
+  .stale { color: #b26a00; font-weight: 600; }   /* курс старше 3 часов */
   .arb-row td { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
   .scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line); }
   .caret { display: inline-block; width: 12px; color: var(--blue); }
@@ -89,6 +90,8 @@
     <span class="sw" style="background:var(--bad-bg);border:1px solid #f3c2c2"></span> у соседа выгоднее для клиента
     <span class="sw" style="background:var(--ok-bg);border:1px solid #bfe3cc"></span> наш курс не хуже.
     Клиент выигрывает, когда <b>покупают дороже</b> (он сдаёт валюту) или <b>продают дешевле</b> (он покупает валюту).
+    <span class="stale">Оранжевым</span> — курс не обновлялся больше 3 часов, к нему стоит относиться осторожно.
+    Данные собираются каждые 30 минут; время в колонке «Обновлён» — это когда сам банк переставил курс.
   </div>
   <div class="scroll"><table class="grid" id="tbl"></table></div>
 </div>
@@ -100,6 +103,25 @@
 <script src="data/bankrates.js"></script>
 <script>
 const fmt = v => v == null ? "—" : (Math.round(v * 100) / 100).toLocaleString("ru-RU");
+
+/** Источники дают время по-разному: ISO у banki.ru и «21.08.2026 11:00» у mainfin. */
+function parseAt(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{2})\.(\d{2})\.(\d{4})[ T](\d{2}):(\d{2})/);
+  const d = m ? new Date(`${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:00+03:00`) : new Date(s);
+  return isNaN(d) ? null : d;
+}
+function freshness(at) {
+  const d = parseAt(at);
+  if (!d) return { text: "—", stale: true, hours: 1e9 };
+  const hours = (Date.now() - d) / 3600e3;
+  const opts = { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" };
+  const today = new Date().toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" })
+    === d.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" });
+  const time = d.toLocaleTimeString("ru-RU", opts);
+  const day = d.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit" });
+  return { text: today ? time : `${day} ${time}`, stale: hours > 3, hours };
+}
 const normBank = s => (s || "").toLowerCase().replace(/ё/g, "е").replace(/банк|bank/g, "").replace(/[^a-zа-я0-9]/g, "");
 
 /* ---------- собираем соседей по отделениям: те же источники, что на карте ---------- */
@@ -112,18 +134,18 @@ const RIVALS = {}, NORATE = {};
 for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : []))
   for (const n of c.near) (RIVALS[n.num] ||= []).push({
     bank: c.bank, addr: c.address || c.name, d: n.d, rates: c.rates,
-    kind: "курс отделения", at: (c.at || "").slice(11, 16), lat: c.lat, lon: c.lon });
+    kind: "курс отделения", at: c.at, lat: c.lat, lon: c.lon });
 for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []))
   for (const n of o.near) (RIVALS[n.num] ||= []).push({
     bank: o.bank, addr: o.address, d: n.d, rates: o.rates,
-    kind: "курс отделения", at: (o.at || "").slice(11, 16), lat: o.lat, lon: o.lon });
+    kind: "курс отделения", at: o.at, lat: o.lat, lon: o.lon });
 for (const p of (typeof POI !== "undefined" ? POI : [])) {
   const r = poiRates(p);
   for (const n of p.near) {
     if (r) (RIVALS[n.num] ||= []).push({
       bank: r.name, addr: p.addr || "", d: n.d, rates: r.rates,
       kind: r.same ? "курс банка" : "курс банка по городу",
-      at: (r.at || "").slice(11, 16), lat: p.lat, lon: p.lon });
+      at: r.at, lat: p.lat, lon: p.lon });
     else NORATE[n.num] = (NORATE[n.num] || 0) + 1;
   }
 }
@@ -215,7 +237,9 @@ function render() {
       <td class="l"><span class="caret">${open ? "▾" : "▸"}</span> № ${b.num}</td>
       <td class="l">${b.address}</td>
       <td class="l muted">${b.metro.join(", ") || "—"}</td>
-      <td>${list.length}${NORATE[b.num] ? `<span class="muted"> +${NORATE[b.num]} без курсов</span>` : ""}</td>
+      <td>${list.length}${NORATE[b.num] ? `<span class="muted"> +${NORATE[b.num]} без курсов</span>` : ""}${
+        list.filter(r => freshness(r.at).stale).length
+          ? `<span class="stale"> ${list.filter(r => freshness(r.at).stale).length} устарели</span>` : ""}</td>
       <td>${better ? `<span class="pill bad">${better}</span>` : `<span class="pill ok">0</span>`}</td>
       <td>${our ? fmt(our.buy) : "—"}</td>
       <td>${our ? fmt(our.sell) : "—"}</td>
@@ -237,7 +261,7 @@ function render() {
           <td class="l muted">${r.addr || "—"}</td>
           <td class="l muted">${r.kind}</td>
           <td>${r.d}</td>
-          <td class="muted">${r.at || "—"}</td>
+          <td class="${freshness(r.at).stale ? "stale" : "muted"}">${freshness(r.at).text}</td>
           <td class="${r.buyBetter ? "bad" : "good"}">${fmt(r.buy)}</td>
           <td class="${r.sellBetter ? "bad" : "good"}">${fmt(r.sell)}</td>
           <td class="l" colspan="3">${diffs.join(", ") || "не выгоднее нашего"}</td>
