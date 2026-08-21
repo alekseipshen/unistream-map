@@ -263,9 +263,12 @@ function freshness(at) {
 /* ---------- отделения: постоянные и дежурные ----------
    Дежурные добавляют на неделю дежурства — держим их отдельным слоем,
    чтобы в обычные дни они не мешали. Выбор запоминается между заходами. */
-const DUTY = typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
+// Слой отделений УРКО временно скрыт с сайта. Данные, сборщики и таймеры на месте —
+// чтобы вернуть, поставить true здесь и в table.html.
+const SHOW_DUTY = false;
+const DUTY = SHOW_DUTY && typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
 DUTY.forEach(b => b.duty = true);
-let dutyOn = localStorage.getItem("dutyOn") === "1";
+let dutyOn = SHOW_DUTY && localStorage.getItem("dutyOn") === "1";
 const activeBranches = () => dutyOn ? BRANCHES.concat(DUTY) : BRANCHES;
 
 /* ---------- состояние ---------- */
@@ -384,7 +387,7 @@ for (const b of DUTY) addBranchMarker(b, dutyLayer);
 if (dutyOn) dutyLayer.addTo(map);
 
 L.control.layers(null, {
-  [`Отделения УРКО (${DUTY.length})`]: dutyLayer,
+  ...(SHOW_DUTY ? { [`Отделения УРКО (${DUTY.length})`]: dutyLayer } : {}),
   "Линии и станции метро": metroLayer,
   "Конкуренты с курсами": compLayer,
   "Другие банки рядом": poiLayer,
