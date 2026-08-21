@@ -57,7 +57,7 @@ def fetch_city(slug):
         ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST,
          f"python3 - {slug}"],
         input=(HERE / "remote_fetch_mainfin.py").read_bytes(),
-        capture_output=True, timeout=300)
+        capture_output=True, timeout=420)  # с запасом на retry при 403
     if p.returncode != 0:
         log(f"  {slug}: не получилось ({p.stderr.decode()[:120]})")
         return None

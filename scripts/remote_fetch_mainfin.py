@@ -7,7 +7,9 @@
 
 ВАЖНО: запускать только с российского IP (RuVDS) — с иностранного mainfin отдаёт 403.
 """
+import http.cookiejar
 import json
+import random
 import re
 import sys
 import time
@@ -31,18 +33,34 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def fetch(attempts=3):
-    opener = urllib.request.build_opener(NoRedirect)
-    for i in range(attempts):
+# Анти-бот mainfin периодически отдаёт 403 пачкой на несколько минут: паузы по
+# 5-10 с не помогают, через четверть часа тот же запрос проходит. Редирект и 404
+# повторять нельзя — это не сбой, а «у города нет своей страницы» (см. NoRedirect),
+# и на прогоне по области такой retry только жёг бы время.
+RETRY_STATUS = {403, 408, 429, 500, 502, 503, 504}
+BACKOFF = (8, 20, 45)
+
+
+def fetch():
+    # Куки живут между попытками: челлендж ставит cookie, со следующего захода
+    # с ней страница обычно отдаётся сразу.
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(NoRedirect,
+                                         urllib.request.HTTPCookieProcessor(jar))
+    for i, pause in enumerate(BACKOFF + (None,)):
         try:
             req = urllib.request.Request(URL, headers=HEADERS)
             with opener.open(req, timeout=60) as r:
                 return r.read().decode("utf-8", "replace")
-        except (urllib.error.URLError, TimeoutError) as e:
-            if i == attempts - 1:
+        except urllib.error.HTTPError as e:   # подкласс URLError — ловим первым
+            if pause is None or e.code not in RETRY_STATUS:
                 raise
-            print(f"retry {i + 1}: {e}", file=sys.stderr)
-            time.sleep(5 * (i + 1))
+            print(f"retry {i + 1} через {pause}s: HTTP {e.code}", file=sys.stderr)
+        except (urllib.error.URLError, TimeoutError) as e:
+            if pause is None:
+                raise
+            print(f"retry {i + 1} через {pause}s: {e}", file=sys.stderr)
+        time.sleep(pause + random.uniform(0, 3))
 
 
 def parse(html):

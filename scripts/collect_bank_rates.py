@@ -68,7 +68,7 @@ def remote(script_name, timeout=600):
 
 
 def fetch_mainfin():
-    d = remote("remote_fetch_mainfin.py", timeout=300)
+    d = remote("remote_fetch_mainfin.py", timeout=600)  # с запасом на retry при 403
     log(f"  mainfin: {len(d['banks'])} банков, {len(d.get('offices', []))} отделений")
     return d["banks"], d.get("offices", [])
 
