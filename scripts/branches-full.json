@@ -801,6 +801,10 @@
     "name": null
    },
    {
+    "type": "UnionPayCard",
+    "name": "Пополнение банковской карты China UnionPay через Compass"
+   },
+   {
     "type": "Runabank_refund",
     "name": null
    },
@@ -973,45 +977,45 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
+    "sellRate": 84.9,
     "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 99.9,
+    "buyRate": 97.5,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 120,
-    "buyRate": 110,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 123,
+    "buyRate": 112,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 108,
+    "buyRate": 98.05,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.5,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 23.9,
+    "buyRate": 22.1,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    },
    {
     "currency": "TRY",
-    "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
+    "sellRate": 2.1,
+    "buyRate": 1.75,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
    }
   ]
  },
@@ -1088,1019 +1092,6 @@
    {
     "id": 68,
     "name": "Киевская"
-   }
-  ],
-  "currencies": [
-   "USD",
-   "EUR",
-   "GBP",
-   "CHF",
-   "CNY",
-   "AED"
-  ],
-  "operations": [
-   {
-    "type": "SendAddressTransfer",
-    "name": "Пункт может отправлять адресные переводы"
-   },
-   {
-    "type": "PayoutAddressTransfer",
-    "name": "Пункт может выдавать адресные переводы"
-   },
-   {
-    "type": "SendAddresslessTransfer",
-    "name": "Пункт может отправлять безадресные переводы"
-   },
-   {
-    "type": "PayoutAddresslessTransfer",
-    "name": "Пункт может выдавать безадресные переводы"
-   },
-   {
-    "type": "PayoutMobileTransfer",
-    "name": "Пункт может выдавать мобильные переводы"
-   },
-   {
-    "type": "ArcaV2",
-    "name": null
-   },
-   {
-    "type": "Alipay",
-    "name": null
-   },
-   {
-    "type": "Wechatpay",
-    "name": "Пополнение кошелька Wechatpay"
-   },
-   {
-    "type": "DcPhoneTransferAZ",
-    "name": null
-   },
-   {
-    "type": "GermesGarantSteam",
-    "name": "Steam - оплата заказа"
-   },
-   {
-    "type": "DcIbant",
-    "name": null
-   },
-   {
-    "type": "OverseasDepositsLite",
-    "name": null
-   },
-   {
-    "type": "OverseasDeposits",
-    "name": "OverseasDeposits сервис"
-   },
-   {
-    "type": "OverseasWallets",
-    "name": null
-   },
-   {
-    "type": "OverseasWalletsLite",
-    "name": null
-   },
-   {
-    "type": "BankDepositUSA",
-    "name": null
-   },
-   {
-    "type": "MaxipayCard",
-    "name": "Maxipay пополнение карт"
-   },
-   {
-    "type": "GermesWallets",
-    "name": null
-   },
-   {
-    "type": "BankDepositEWalletTR",
-    "name": null
-   },
-   {
-    "type": "SovcombankInsurance",
-    "name": null
-   },
-   {
-    "type": "GermesAmway",
-    "name": "Yurta - оплата заказа"
-   },
-   {
-    "type": "KwikPayPhoneTransfer",
-    "name": null
-   },
-   {
-    "type": "ArcaLite",
-    "name": null
-   },
-   {
-    "type": "PayoutNotification",
-    "name": null
-   },
-   {
-    "type": "Elecsnet",
-    "name": null
-   },
-   {
-    "type": "BankDepositAlfaparcelUK",
-    "name": null
-   },
-   {
-    "type": "UniversalBankVisa",
-    "name": null
-   },
-   {
-    "type": "OtherBudgetPayments",
-    "name": null
-   },
-   {
-    "type": "TaxesStateDutiesPayments",
-    "name": null
-   },
-   {
-    "type": "PhoneTransfer",
-    "name": null
-   },
-   {
-    "type": "Best2Pay",
-    "name": null
-   },
-   {
-    "type": "BankDepositTurkey",
-    "name": "Переводы на счета в Турцию"
-   },
-   {
-    "type": "ReinforcementOperationCorrAccFromRKC",
-    "name": null
-   },
-   {
-    "type": "SbpC2BBindTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpC2BMpTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpC2BTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpB2CTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpC2BInTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpB2CInTransfer",
-    "name": null
-   },
-   {
-    "type": "UnistreamCardWithdrawRub",
-    "name": null
-   },
-   {
-    "type": "CreditToCash",
-    "name": null
-   },
-   {
-    "type": "CreditToAccount",
-    "name": null
-   },
-   {
-    "type": "TransferB2C",
-    "name": null
-   },
-   {
-    "type": "InactiveCardReplenishment",
-    "name": null
-   },
-   {
-    "type": "Transfer",
-    "name": "Перевод по системе ЮНИСТРИМ"
-   },
-   {
-    "type": "ParkingFine",
-    "name": null
-   },
-   {
-    "type": "ChangePut",
-    "name": null
-   },
-   {
-    "type": "SbpTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpCashback",
-    "name": null
-   },
-   {
-    "type": "SbpIncomingTransfer",
-    "name": null
-   },
-   {
-    "type": "ReinforcementOperationFromRKC",
-    "name": null
-   },
-   {
-    "type": "CancelNoticeAPI",
-    "name": null
-   },
-   {
-    "type": "CancelNoticeUpdateAPI",
-    "name": null
-   },
-   {
-    "type": "IntrabankOperationsDebet",
-    "name": null
-   },
-   {
-    "type": "IntrabankOperationsCredit",
-    "name": null
-   },
-   {
-    "type": "RefundCanceledTransfer",
-    "name": null
-   },
-   {
-    "type": "ReinforcementOperationFromAnotherBank",
-    "name": null
-   },
-   {
-    "type": "CashToLending",
-    "name": null
-   },
-   {
-    "type": "CancelNoticeDocuments",
-    "name": null
-   },
-   {
-    "type": "CashWithdrawByCheque",
-    "name": null
-   },
-   {
-    "type": "DoubtfulRegistrationAndStorage",
-    "name": null
-   },
-   {
-    "type": "DoubtfulRegistrationAndStorageUnknown",
-    "name": null
-   },
-   {
-    "type": "Arca",
-    "name": null
-   },
-   {
-    "type": "SendingForExaminationToBankHeadOfficeTransactions",
-    "name": null
-   },
-   {
-    "type": "SendingForExaminationToBankHeadOffice",
-    "name": null
-   },
-   {
-    "type": "CancelNotice",
-    "name": null
-   },
-   {
-    "type": "ElCard",
-    "name": "Пополнение карт Киргизии ElCard"
-   },
-   {
-    "type": "SEPA_Transfer",
-    "name": null
-   },
-   {
-    "type": "RKCEncashment",
-    "name": null
-   },
-   {
-    "type": "BDShortage",
-    "name": null
-   },
-   {
-    "type": "BDSurplus",
-    "name": null
-   },
-   {
-    "type": "BDActRemovalOfCash",
-    "name": null
-   },
-   {
-    "type": "BDClose",
-    "name": null
-   },
-   {
-    "type": "PatentFee",
-    "name": null
-   },
-   {
-    "type": "AnotherBankEncashment",
-    "name": null
-   },
-   {
-    "type": "AnotherCashEncashment",
-    "name": null
-   },
-   {
-    "type": "ReinforcementOperationFromHeadOffice",
-    "name": null
-   },
-   {
-    "type": "ReinforcementOperationFromAnotherOffice",
-    "name": null
-   },
-   {
-    "type": "HeadOfficeEncashment",
-    "name": null
-   },
-   {
-    "type": "GeoMoney",
-    "name": null
-   },
-   {
-    "type": "TransferToAccount",
-    "name": null
-   },
-   {
-    "type": "IPSharieva",
-    "name": null
-   },
-   {
-    "type": "RKOCredit",
-    "name": null
-   },
-   {
-    "type": "sepa",
-    "name": null
-   },
-   {
-    "type": "Compass_Mir",
-    "name": "Пополнение банковской карты Мир"
-   },
-   {
-    "type": "lokobank",
-    "name": null
-   },
-   {
-    "type": "SwiftTransferChina",
-    "name": null
-   },
-   {
-    "type": "Evroleasing",
-    "name": null
-   },
-   {
-    "type": "LeasingTechnics",
-    "name": null
-   },
-   {
-    "type": "Cyberplat",
-    "name": null
-   },
-   {
-    "type": "ARTEGROUP",
-    "name": null
-   },
-   {
-    "type": "PayoutTransfer",
-    "name": null
-   },
-   {
-    "type": "PayoutRevokedTransfer",
-    "name": null
-   },
-   {
-    "type": "TransferNotice",
-    "name": null
-   },
-   {
-    "type": "MIRANA",
-    "name": null
-   },
-   {
-    "type": "Genbank",
-    "name": null
-   },
-   {
-    "type": "NalichniyRaschet",
-    "name": null
-   },
-   {
-    "type": "BPOnlineVoyage",
-    "name": null
-   },
-   {
-    "type": "OnlineVTurism",
-    "name": null
-   },
-   {
-    "type": "BrsAccount",
-    "name": null
-   },
-   {
-    "type": "ModulBank",
-    "name": null
-   },
-   {
-    "type": "revo",
-    "name": null
-   },
-   {
-    "type": "Mebel-TYT",
-    "name": null
-   },
-   {
-    "type": "PashinyanSG",
-    "name": null
-   },
-   {
-    "type": "Faberlic",
-    "name": "Пополнение счета Faberlic"
-   },
-   {
-    "type": "Otkritie",
-    "name": null
-   },
-   {
-    "type": "Brs",
-    "name": "Пополнение банковской карты VISA/MasterCard/AmEx/DC"
-   },
-   {
-    "type": "RFIBankCredit",
-    "name": null
-   },
-   {
-    "type": "KhachatryanOC",
-    "name": null
-   },
-   {
-    "type": "AirapetyanRA",
-    "name": null
-   },
-   {
-    "type": "GasnashKE",
-    "name": null
-   },
-   {
-    "type": "OvsepyanAA",
-    "name": null
-   },
-   {
-    "type": "TDMicrozaimov",
-    "name": null
-   },
-   {
-    "type": "OTPBank",
-    "name": null
-   },
-   {
-    "type": "RussianZoloto",
-    "name": null
-   },
-   {
-    "type": "Zakonia",
-    "name": null
-   },
-   {
-    "type": "Platon",
-    "name": null
-   },
-   {
-    "type": "Bank",
-    "name": null
-   },
-   {
-    "type": "AdvoService",
-    "name": null
-   },
-   {
-    "type": "CurrencyExchangeBuy",
-    "name": null
-   },
-   {
-    "type": "CurrencyExchangeSell",
-    "name": null
-   },
-   {
-    "type": "PaymentOrder",
-    "name": null
-   },
-   {
-    "type": "UnistreamCardWithdraw",
-    "name": null
-   },
-   {
-    "type": "CashToUnistreamCard",
-    "name": null
-   },
-   {
-    "type": "YandexPaymentsMarusenka",
-    "name": null
-   },
-   {
-    "type": "YandexPaymentsStrelka",
-    "name": null
-   },
-   {
-    "type": "YandexPaymentsTroika",
-    "name": null
-   },
-   {
-    "type": "YandexPaymentsPodorozhnik",
-    "name": null
-   },
-   {
-    "type": "YandexPaymentsDiameter",
-    "name": null
-   },
-   {
-    "type": "YandexMoneyShops",
-    "name": null
-   },
-   {
-    "type": "YandexMoney",
-    "name": null
-   },
-   {
-    "type": "Metib",
-    "name": null
-   },
-   {
-    "type": "HomeMoney",
-    "name": null
-   },
-   {
-    "type": "QiwiWallet",
-    "name": null
-   },
-   {
-    "type": "NikoBank",
-    "name": null
-   },
-   {
-    "type": "Gibdd",
-    "name": "Оплатить штраф ГИБДД"
-   },
-   {
-    "type": "GeorgianCharity",
-    "name": "Помощь пострадавшим от наводнения в Грузии"
-   },
-   {
-    "type": "ExpressFinance",
-    "name": "Погашение замов МФО «Экспресс Финанс»"
-   },
-   {
-    "type": "AkbVpbLoans",
-    "name": "Погашение кредитов АКБ «ВПБ»"
-   },
-   {
-    "type": "MOLBULAK",
-    "name": "Погашение займов МФО «МОЛ.БУЛАК.РУ»"
-   },
-   {
-    "type": "RussianLoan",
-    "name": "Погашение займов МФО «Русский Займ»"
-   },
-   {
-    "type": "Warface",
-    "name": "Warface"
-   },
-   {
-    "type": "Mamba",
-    "name": "Mamba"
-   },
-   {
-    "type": "VkVotes",
-    "name": "ВКонтакте"
-   },
-   {
-    "type": "MoiMirAccount",
-    "name": "Mail.ru (Мой мир)"
-   },
-   {
-    "type": "MobileTeleSystem",
-    "name": null
-   },
-   {
-    "type": "Oriflame",
-    "name": "Oriflame"
-   },
-   {
-    "type": "AllodsOnline",
-    "name": "Пополнение счета Аллоды Онлайн"
-   },
-   {
-    "type": "Odnoklassniki",
-    "name": "Одноклассники"
-   },
-   {
-    "type": "Ozon.ru",
-    "name": "Оплата магазина Ozon.ru"
-   },
-   {
-    "type": "WorldOfTanks",
-    "name": "World of Tanks"
-   },
-   {
-    "type": "VkAd",
-    "name": "ВКонтакте"
-   },
-   {
-    "type": "UtilitiesKS",
-    "name": "ООО КС- оплата услуг ЖКХ"
-   },
-   {
-    "type": "UtilitiesIntegralPlus",
-    "name": "ИНТЕГРАЛ ПЛЮС - оплата услуг ЖКХ"
-   },
-   {
-    "type": "TOPCredit",
-    "name": "Пополнение карт ФО, Топ кредит"
-   },
-   {
-    "type": "LenoblBank",
-    "name": "Погашение кредита ООО ЛЕНОБЛБАНК"
-   },
-   {
-    "type": "Utilities",
-    "name": "ЖКУ"
-   },
-   {
-    "type": "Rmfinance",
-    "name": "РУСМИКРОФИНАНС-Инвестиции. Погашение кредита."
-   },
-   {
-    "type": "Patent",
-    "name": "Оплата налога на доходы физических лиц в виде фиксированного авансового платежа для иностранных граждан"
-   },
-   {
-    "type": "LasPassportId",
-    "name": "Защитный идентификатор на паспорт"
-   },
-   {
-    "type": "RKOLegal",
-    "name": "Рассчетно Кассовое обслуживание юридических лиц - Объявление на взнос наличных"
-   },
-   {
-    "type": "RkoForeignIPS",
-    "name": null
-   },
-   {
-    "type": "RkoUnistreamIPS",
-    "name": null
-   },
-   {
-    "type": "UniversalLoanRepayment",
-    "name": null
-   },
-   {
-    "type": "WireTransfer",
-    "name": "Универсальный платеж с использованием банковских реквизитов в другой банк или в бюджет РФ"
-   },
-   {
-    "type": "Tcs",
-    "name": "Пополнение счета в банке Тинькоф Кредитные системы по номеру договора или номеру банковской карты"
-   },
-   {
-    "type": "RazvitieWireTransfer",
-    "name": "Оплата услуг ЧОУ Международный образовательный центр \"Развитие\""
-   },
-   {
-    "type": "KKRCMegafon",
-    "name": null
-   },
-   {
-    "type": "StAliExpress",
-    "name": null
-   },
-   {
-    "type": "ProPlati",
-    "name": null
-   },
-   {
-    "type": "CashToCard",
-    "name": "Пополнение банковской карты VISA/MasterCard любого банка по номеру карты"
-   },
-   {
-    "type": "Kuzminskaya",
-    "name": null
-   },
-   {
-    "type": "KortiMilli",
-    "name": "Пополнение карты KortiMilli"
-   },
-   {
-    "type": "KuznetskyBank",
-    "name": null
-   },
-   {
-    "type": "LeasingSales",
-    "name": null
-   },
-   {
-    "type": "TochkaBank",
-    "name": null
-   },
-   {
-    "type": "Raif",
-    "name": null
-   },
-   {
-    "type": "ForestLab",
-    "name": null
-   },
-   {
-    "type": "CurrencyExchangeBuyDamagedBanknotes",
-    "name": null
-   },
-   {
-    "type": "Runabank_refund",
-    "name": null
-   },
-   {
-    "type": "YandexMoneyIdentification",
-    "name": null
-   },
-   {
-    "type": "Baikalinvestbank",
-    "name": null
-   },
-   {
-    "type": "UnistreamCardRelease",
-    "name": null
-   },
-   {
-    "type": "UnistreamCardReleaseComission",
-    "name": null
-   },
-   {
-    "type": "Fmfb_Mobile",
-    "name": null
-   },
-   {
-    "type": "UzCard",
-    "name": "Пополнение карт Узбекистана UzCard"
-   },
-   {
-    "type": "Fmfb_Credit",
-    "name": null
-   },
-   {
-    "type": "Fmfb_CortyMilli",
-    "name": "Пополнение банковской карты Корти Милли"
-   },
-   {
-    "type": "Ding",
-    "name": "Платеж за мобильный (Ding)"
-   },
-   {
-    "type": "TopUpMobile",
-    "name": "Универсальный метод пополнения мобильной связи"
-   },
-   {
-    "type": "CardToCashTransfer",
-    "name": null
-   },
-   {
-    "type": "CardPayoutTransfer",
-    "name": null
-   },
-   {
-    "type": "AubPayment",
-    "name": null
-   },
-   {
-    "type": "SbpMe2MeInTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpMe2MeOutTransfer",
-    "name": null
-   },
-   {
-    "type": "IssuingCounterfeitToPolice",
-    "name": null
-   },
-   {
-    "type": "IssuingCounterfeitToPoliceReport",
-    "name": null
-   },
-   {
-    "type": "CounterfeitRegistration",
-    "name": null
-   },
-   {
-    "type": "CounterfeitRegistrationUnknown",
-    "name": null
-   },
-   {
-    "type": "Maxipay",
-    "name": null
-   },
-   {
-    "type": "UBPayPhoneTransfer",
-    "name": null
-   },
-   {
-    "type": "UBPayPhoneTransferLite",
-    "name": null
-   },
-   {
-    "type": "RuevSG",
-    "name": null
-   },
-   {
-    "type": "Pay2Net",
-    "name": null
-   },
-   {
-    "type": "UCardAcceptanceFromAnotherOffice",
-    "name": null
-   },
-   {
-    "type": "UCardDeliveryToAnotherOffice",
-    "name": null
-   },
-   {
-    "type": "UCardIssuanceToClient",
-    "name": null
-   },
-   {
-    "type": "UCardIssuanceSubreport",
-    "name": null
-   },
-   {
-    "type": "UCardAcceptanceSubreport",
-    "name": null
-   },
-   {
-    "type": "Ineko",
-    "name": null
-   },
-   {
-    "type": "QRPayTurkey",
-    "name": null
-   },
-   {
-    "type": "UnionPay",
-    "name": "Денежные переводы в Китай"
-   },
-   {
-    "type": "Profitable",
-    "name": "Пополнение карт Казахстана Profitable"
-   },
-   {
-    "type": "SbpC2GTransfer",
-    "name": null
-   },
-   {
-    "type": "SbpC2GPlTransfer",
-    "name": null
-   },
-   {
-    "type": "ReGeneratePaymentOrdersAfterCompleted",
-    "name": null
-   },
-   {
-    "type": "UCardDeliveryToHeadOffice",
-    "name": null
-   }
-  ],
-  "region": {
-   "id": 16,
-   "countryCode": "RUS",
-   "name": "Москва",
-   "currencies": [],
-   "subway": true,
-   "branches": null,
-   "_links": {
-    "self": "/api/v1/countries/RUS/regions/16"
-   }
-  },
-  "bitrixName": "ОО 011",
-  "noPromo": false,
-  "exchangeManagerId": null,
-  "exchangeManagerName": "Штейнбок Игорь",
-  "exchangeManagerPhone": "+7 (925) 310-45-31",
-  "exchangeBranchPhone": null,
-  "exchangeRates": [
-   {
-    "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   },
-   {
-    "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   },
-   {
-    "currency": "GBP",
-    "sellRate": 120,
-    "buyRate": 110,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   },
-   {
-    "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   },
-   {
-    "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   },
-   {
-    "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T14:21:48+03:00"
-   }
-  ]
- },
- "023": {
-  "id": 346933,
-  "agentId": 11153,
-  "name": "АО КБ \"ЮНИСТРИМ\" Дополнительный офис №023",
-  "shortName": "ДО №023 АО КБ \"ЮНИСТРИМ\" рег.№3467/0/459",
-  "address": "121087, МОСКВА Г, БАГРАТИОНОВСКИЙ ПР-Д, 5",
-  "addressNotes": "М. «Фили», 1 вагон из центра, выход направо. Из стеклянных дверей направо перейти улицу, повернуть направо и идти до ТЦ «Филион». Зайти с главного входа, пройти до эскалатора на цокольный этаж, повернуть направо и идти прямо по левой стороне до дверей.",
-  "location": {
-   "lat": 55.7436,
-   "lon": 37.5081,
-   "zoom": 15
-  },
-  "phone": "+7 (925) 310-45-31",
-  "country": {
-   "countryCode": "RUS",
-   "name": "Россия",
-   "_links": {
-    "self": "/api/v1/countries/RUS"
-   }
-  },
-  "workingSchedule": {
-   "openNow": true,
-   "timeZoneId": "Europe/Moscow",
-   "workingHours": [
-    {
-     "weekday": "Mon",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Tue",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Wed",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Thu",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Fri",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Sat",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    },
-    {
-     "weekday": "Sun",
-     "date": null,
-     "open": "09:30",
-     "close": "22:00"
-    }
-   ],
-   "workingHoursNotes": "Перерыв:13:00-13:30 16:30-16:45 \n19:45-20:00"
-  },
-  "metro": [
-   {
-    "id": 66,
-    "name": "Багратионовская"
-   },
-   {
-    "id": 150,
-    "name": "Фили"
    }
   ],
   "currencies": [
@@ -2997,6 +1988,1026 @@
     "self": "/api/v1/countries/RUS/regions/16"
    }
   },
+  "bitrixName": "ОО 011",
+  "noPromo": false,
+  "exchangeManagerId": null,
+  "exchangeManagerName": "Штейнбок Игорь",
+  "exchangeManagerPhone": "+7 (925) 310-45-31",
+  "exchangeBranchPhone": null,
+  "exchangeRates": [
+   {
+    "currency": "USD",
+    "sellRate": 84.9,
+    "buyRate": 83.5,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "EUR",
+    "sellRate": 99.9,
+    "buyRate": 97.5,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "GBP",
+    "sellRate": 123,
+    "buyRate": 112,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "CHF",
+    "sellRate": 108,
+    "buyRate": 98.05,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "CNY",
+    "sellRate": 13.1,
+    "buyRate": 12.5,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "AED",
+    "sellRate": 23.9,
+    "buyRate": 22.1,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   },
+   {
+    "currency": "TRY",
+    "sellRate": 2.1,
+    "buyRate": 1.75,
+    "lastUpdated": "2026-08-21T12:09:28+03:00"
+   }
+  ]
+ },
+ "023": {
+  "id": 346933,
+  "agentId": 11153,
+  "name": "АО КБ \"ЮНИСТРИМ\" Дополнительный офис №023",
+  "shortName": "ДО №023 АО КБ \"ЮНИСТРИМ\" рег.№3467/0/459",
+  "address": "121087, МОСКВА Г, БАГРАТИОНОВСКИЙ ПР-Д, 5",
+  "addressNotes": "М. «Фили», 1 вагон из центра, выход направо. Из стеклянных дверей направо перейти улицу, повернуть направо и идти до ТЦ «Филион». Зайти с главного входа, пройти до эскалатора на цокольный этаж, повернуть направо и идти прямо по левой стороне до дверей.",
+  "location": {
+   "lat": 55.7436,
+   "lon": 37.5081,
+   "zoom": 15
+  },
+  "phone": "+7 (925) 310-45-31",
+  "country": {
+   "countryCode": "RUS",
+   "name": "Россия",
+   "_links": {
+    "self": "/api/v1/countries/RUS"
+   }
+  },
+  "workingSchedule": {
+   "openNow": true,
+   "timeZoneId": "Europe/Moscow",
+   "workingHours": [
+    {
+     "weekday": "Mon",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Tue",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Wed",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Thu",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Fri",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Sat",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    },
+    {
+     "weekday": "Sun",
+     "date": null,
+     "open": "09:30",
+     "close": "22:00"
+    }
+   ],
+   "workingHoursNotes": "Перерыв:13:00-13:30 16:30-16:45 \n19:45-20:00"
+  },
+  "metro": [
+   {
+    "id": 66,
+    "name": "Багратионовская"
+   },
+   {
+    "id": 150,
+    "name": "Фили"
+   }
+  ],
+  "currencies": [
+   "USD",
+   "EUR",
+   "GBP",
+   "CHF",
+   "CNY",
+   "AED",
+   "TRY"
+  ],
+  "operations": [
+   {
+    "type": "SendAddressTransfer",
+    "name": "Пункт может отправлять адресные переводы"
+   },
+   {
+    "type": "PayoutAddressTransfer",
+    "name": "Пункт может выдавать адресные переводы"
+   },
+   {
+    "type": "SendAddresslessTransfer",
+    "name": "Пункт может отправлять безадресные переводы"
+   },
+   {
+    "type": "PayoutAddresslessTransfer",
+    "name": "Пункт может выдавать безадресные переводы"
+   },
+   {
+    "type": "PayoutMobileTransfer",
+    "name": "Пункт может выдавать мобильные переводы"
+   },
+   {
+    "type": "ArcaV2",
+    "name": null
+   },
+   {
+    "type": "Alipay",
+    "name": null
+   },
+   {
+    "type": "Wechatpay",
+    "name": "Пополнение кошелька Wechatpay"
+   },
+   {
+    "type": "DcPhoneTransferAZ",
+    "name": null
+   },
+   {
+    "type": "GermesGarantSteam",
+    "name": "Steam - оплата заказа"
+   },
+   {
+    "type": "DcIbant",
+    "name": null
+   },
+   {
+    "type": "OverseasDepositsLite",
+    "name": null
+   },
+   {
+    "type": "OverseasDeposits",
+    "name": "OverseasDeposits сервис"
+   },
+   {
+    "type": "OverseasWallets",
+    "name": null
+   },
+   {
+    "type": "OverseasWalletsLite",
+    "name": null
+   },
+   {
+    "type": "BankDepositUSA",
+    "name": null
+   },
+   {
+    "type": "MaxipayCard",
+    "name": "Maxipay пополнение карт"
+   },
+   {
+    "type": "GermesWallets",
+    "name": null
+   },
+   {
+    "type": "BankDepositEWalletTR",
+    "name": null
+   },
+   {
+    "type": "SovcombankInsurance",
+    "name": null
+   },
+   {
+    "type": "GermesAmway",
+    "name": "Yurta - оплата заказа"
+   },
+   {
+    "type": "KwikPayPhoneTransfer",
+    "name": null
+   },
+   {
+    "type": "ArcaLite",
+    "name": null
+   },
+   {
+    "type": "PayoutNotification",
+    "name": null
+   },
+   {
+    "type": "Elecsnet",
+    "name": null
+   },
+   {
+    "type": "BankDepositAlfaparcelUK",
+    "name": null
+   },
+   {
+    "type": "UniversalBankVisa",
+    "name": null
+   },
+   {
+    "type": "OtherBudgetPayments",
+    "name": null
+   },
+   {
+    "type": "TaxesStateDutiesPayments",
+    "name": null
+   },
+   {
+    "type": "PhoneTransfer",
+    "name": null
+   },
+   {
+    "type": "Best2Pay",
+    "name": null
+   },
+   {
+    "type": "BankDepositTurkey",
+    "name": "Переводы на счета в Турцию"
+   },
+   {
+    "type": "ReinforcementOperationCorrAccFromRKC",
+    "name": null
+   },
+   {
+    "type": "SbpC2BBindTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpC2BMpTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpC2BTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpB2CTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpC2BInTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpB2CInTransfer",
+    "name": null
+   },
+   {
+    "type": "UnistreamCardWithdrawRub",
+    "name": null
+   },
+   {
+    "type": "CreditToCash",
+    "name": null
+   },
+   {
+    "type": "CreditToAccount",
+    "name": null
+   },
+   {
+    "type": "TransferB2C",
+    "name": null
+   },
+   {
+    "type": "InactiveCardReplenishment",
+    "name": null
+   },
+   {
+    "type": "Transfer",
+    "name": "Перевод по системе ЮНИСТРИМ"
+   },
+   {
+    "type": "ParkingFine",
+    "name": null
+   },
+   {
+    "type": "ChangePut",
+    "name": null
+   },
+   {
+    "type": "SbpTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpCashback",
+    "name": null
+   },
+   {
+    "type": "SbpIncomingTransfer",
+    "name": null
+   },
+   {
+    "type": "ReinforcementOperationFromRKC",
+    "name": null
+   },
+   {
+    "type": "CancelNoticeAPI",
+    "name": null
+   },
+   {
+    "type": "CancelNoticeUpdateAPI",
+    "name": null
+   },
+   {
+    "type": "IntrabankOperationsDebet",
+    "name": null
+   },
+   {
+    "type": "IntrabankOperationsCredit",
+    "name": null
+   },
+   {
+    "type": "RefundCanceledTransfer",
+    "name": null
+   },
+   {
+    "type": "ReinforcementOperationFromAnotherBank",
+    "name": null
+   },
+   {
+    "type": "CashToLending",
+    "name": null
+   },
+   {
+    "type": "CancelNoticeDocuments",
+    "name": null
+   },
+   {
+    "type": "CashWithdrawByCheque",
+    "name": null
+   },
+   {
+    "type": "DoubtfulRegistrationAndStorage",
+    "name": null
+   },
+   {
+    "type": "DoubtfulRegistrationAndStorageUnknown",
+    "name": null
+   },
+   {
+    "type": "Arca",
+    "name": null
+   },
+   {
+    "type": "SendingForExaminationToBankHeadOfficeTransactions",
+    "name": null
+   },
+   {
+    "type": "SendingForExaminationToBankHeadOffice",
+    "name": null
+   },
+   {
+    "type": "CancelNotice",
+    "name": null
+   },
+   {
+    "type": "ElCard",
+    "name": "Пополнение карт Киргизии ElCard"
+   },
+   {
+    "type": "SEPA_Transfer",
+    "name": null
+   },
+   {
+    "type": "RKCEncashment",
+    "name": null
+   },
+   {
+    "type": "BDShortage",
+    "name": null
+   },
+   {
+    "type": "BDSurplus",
+    "name": null
+   },
+   {
+    "type": "BDActRemovalOfCash",
+    "name": null
+   },
+   {
+    "type": "BDClose",
+    "name": null
+   },
+   {
+    "type": "PatentFee",
+    "name": null
+   },
+   {
+    "type": "AnotherBankEncashment",
+    "name": null
+   },
+   {
+    "type": "AnotherCashEncashment",
+    "name": null
+   },
+   {
+    "type": "ReinforcementOperationFromHeadOffice",
+    "name": null
+   },
+   {
+    "type": "ReinforcementOperationFromAnotherOffice",
+    "name": null
+   },
+   {
+    "type": "HeadOfficeEncashment",
+    "name": null
+   },
+   {
+    "type": "GeoMoney",
+    "name": null
+   },
+   {
+    "type": "TransferToAccount",
+    "name": null
+   },
+   {
+    "type": "IPSharieva",
+    "name": null
+   },
+   {
+    "type": "RKOCredit",
+    "name": null
+   },
+   {
+    "type": "sepa",
+    "name": null
+   },
+   {
+    "type": "Compass_Mir",
+    "name": "Пополнение банковской карты Мир"
+   },
+   {
+    "type": "lokobank",
+    "name": null
+   },
+   {
+    "type": "SwiftTransferChina",
+    "name": null
+   },
+   {
+    "type": "Evroleasing",
+    "name": null
+   },
+   {
+    "type": "LeasingTechnics",
+    "name": null
+   },
+   {
+    "type": "Cyberplat",
+    "name": null
+   },
+   {
+    "type": "ARTEGROUP",
+    "name": null
+   },
+   {
+    "type": "PayoutTransfer",
+    "name": null
+   },
+   {
+    "type": "PayoutRevokedTransfer",
+    "name": null
+   },
+   {
+    "type": "TransferNotice",
+    "name": null
+   },
+   {
+    "type": "MIRANA",
+    "name": null
+   },
+   {
+    "type": "Genbank",
+    "name": null
+   },
+   {
+    "type": "NalichniyRaschet",
+    "name": null
+   },
+   {
+    "type": "BPOnlineVoyage",
+    "name": null
+   },
+   {
+    "type": "OnlineVTurism",
+    "name": null
+   },
+   {
+    "type": "BrsAccount",
+    "name": null
+   },
+   {
+    "type": "ModulBank",
+    "name": null
+   },
+   {
+    "type": "revo",
+    "name": null
+   },
+   {
+    "type": "Mebel-TYT",
+    "name": null
+   },
+   {
+    "type": "PashinyanSG",
+    "name": null
+   },
+   {
+    "type": "Faberlic",
+    "name": "Пополнение счета Faberlic"
+   },
+   {
+    "type": "Otkritie",
+    "name": null
+   },
+   {
+    "type": "Brs",
+    "name": "Пополнение банковской карты VISA/MasterCard/AmEx/DC"
+   },
+   {
+    "type": "RFIBankCredit",
+    "name": null
+   },
+   {
+    "type": "KhachatryanOC",
+    "name": null
+   },
+   {
+    "type": "AirapetyanRA",
+    "name": null
+   },
+   {
+    "type": "GasnashKE",
+    "name": null
+   },
+   {
+    "type": "OvsepyanAA",
+    "name": null
+   },
+   {
+    "type": "TDMicrozaimov",
+    "name": null
+   },
+   {
+    "type": "OTPBank",
+    "name": null
+   },
+   {
+    "type": "RussianZoloto",
+    "name": null
+   },
+   {
+    "type": "Zakonia",
+    "name": null
+   },
+   {
+    "type": "Platon",
+    "name": null
+   },
+   {
+    "type": "Bank",
+    "name": null
+   },
+   {
+    "type": "AdvoService",
+    "name": null
+   },
+   {
+    "type": "CurrencyExchangeBuy",
+    "name": null
+   },
+   {
+    "type": "CurrencyExchangeSell",
+    "name": null
+   },
+   {
+    "type": "PaymentOrder",
+    "name": null
+   },
+   {
+    "type": "UnistreamCardWithdraw",
+    "name": null
+   },
+   {
+    "type": "CashToUnistreamCard",
+    "name": null
+   },
+   {
+    "type": "YandexPaymentsMarusenka",
+    "name": null
+   },
+   {
+    "type": "YandexPaymentsStrelka",
+    "name": null
+   },
+   {
+    "type": "YandexPaymentsTroika",
+    "name": null
+   },
+   {
+    "type": "YandexPaymentsPodorozhnik",
+    "name": null
+   },
+   {
+    "type": "YandexPaymentsDiameter",
+    "name": null
+   },
+   {
+    "type": "YandexMoneyShops",
+    "name": null
+   },
+   {
+    "type": "YandexMoney",
+    "name": null
+   },
+   {
+    "type": "Metib",
+    "name": null
+   },
+   {
+    "type": "HomeMoney",
+    "name": null
+   },
+   {
+    "type": "QiwiWallet",
+    "name": null
+   },
+   {
+    "type": "NikoBank",
+    "name": null
+   },
+   {
+    "type": "Gibdd",
+    "name": "Оплатить штраф ГИБДД"
+   },
+   {
+    "type": "GeorgianCharity",
+    "name": "Помощь пострадавшим от наводнения в Грузии"
+   },
+   {
+    "type": "ExpressFinance",
+    "name": "Погашение замов МФО «Экспресс Финанс»"
+   },
+   {
+    "type": "AkbVpbLoans",
+    "name": "Погашение кредитов АКБ «ВПБ»"
+   },
+   {
+    "type": "MOLBULAK",
+    "name": "Погашение займов МФО «МОЛ.БУЛАК.РУ»"
+   },
+   {
+    "type": "RussianLoan",
+    "name": "Погашение займов МФО «Русский Займ»"
+   },
+   {
+    "type": "Warface",
+    "name": "Warface"
+   },
+   {
+    "type": "Mamba",
+    "name": "Mamba"
+   },
+   {
+    "type": "VkVotes",
+    "name": "ВКонтакте"
+   },
+   {
+    "type": "MoiMirAccount",
+    "name": "Mail.ru (Мой мир)"
+   },
+   {
+    "type": "MobileTeleSystem",
+    "name": null
+   },
+   {
+    "type": "Oriflame",
+    "name": "Oriflame"
+   },
+   {
+    "type": "AllodsOnline",
+    "name": "Пополнение счета Аллоды Онлайн"
+   },
+   {
+    "type": "Odnoklassniki",
+    "name": "Одноклассники"
+   },
+   {
+    "type": "Ozon.ru",
+    "name": "Оплата магазина Ozon.ru"
+   },
+   {
+    "type": "WorldOfTanks",
+    "name": "World of Tanks"
+   },
+   {
+    "type": "VkAd",
+    "name": "ВКонтакте"
+   },
+   {
+    "type": "UtilitiesKS",
+    "name": "ООО КС- оплата услуг ЖКХ"
+   },
+   {
+    "type": "UtilitiesIntegralPlus",
+    "name": "ИНТЕГРАЛ ПЛЮС - оплата услуг ЖКХ"
+   },
+   {
+    "type": "TOPCredit",
+    "name": "Пополнение карт ФО, Топ кредит"
+   },
+   {
+    "type": "LenoblBank",
+    "name": "Погашение кредита ООО ЛЕНОБЛБАНК"
+   },
+   {
+    "type": "Utilities",
+    "name": "ЖКУ"
+   },
+   {
+    "type": "Rmfinance",
+    "name": "РУСМИКРОФИНАНС-Инвестиции. Погашение кредита."
+   },
+   {
+    "type": "Patent",
+    "name": "Оплата налога на доходы физических лиц в виде фиксированного авансового платежа для иностранных граждан"
+   },
+   {
+    "type": "LasPassportId",
+    "name": "Защитный идентификатор на паспорт"
+   },
+   {
+    "type": "RKOLegal",
+    "name": "Рассчетно Кассовое обслуживание юридических лиц - Объявление на взнос наличных"
+   },
+   {
+    "type": "RkoForeignIPS",
+    "name": null
+   },
+   {
+    "type": "RkoUnistreamIPS",
+    "name": null
+   },
+   {
+    "type": "UniversalLoanRepayment",
+    "name": null
+   },
+   {
+    "type": "WireTransfer",
+    "name": "Универсальный платеж с использованием банковских реквизитов в другой банк или в бюджет РФ"
+   },
+   {
+    "type": "Tcs",
+    "name": "Пополнение счета в банке Тинькоф Кредитные системы по номеру договора или номеру банковской карты"
+   },
+   {
+    "type": "RazvitieWireTransfer",
+    "name": "Оплата услуг ЧОУ Международный образовательный центр \"Развитие\""
+   },
+   {
+    "type": "KKRCMegafon",
+    "name": null
+   },
+   {
+    "type": "StAliExpress",
+    "name": null
+   },
+   {
+    "type": "ProPlati",
+    "name": null
+   },
+   {
+    "type": "CashToCard",
+    "name": "Пополнение банковской карты VISA/MasterCard любого банка по номеру карты"
+   },
+   {
+    "type": "Kuzminskaya",
+    "name": null
+   },
+   {
+    "type": "KortiMilli",
+    "name": "Пополнение карты KortiMilli"
+   },
+   {
+    "type": "KuznetskyBank",
+    "name": null
+   },
+   {
+    "type": "LeasingSales",
+    "name": null
+   },
+   {
+    "type": "TochkaBank",
+    "name": null
+   },
+   {
+    "type": "Raif",
+    "name": null
+   },
+   {
+    "type": "ForestLab",
+    "name": null
+   },
+   {
+    "type": "CurrencyExchangeBuyDamagedBanknotes",
+    "name": null
+   },
+   {
+    "type": "Runabank_refund",
+    "name": null
+   },
+   {
+    "type": "YandexMoneyIdentification",
+    "name": null
+   },
+   {
+    "type": "Baikalinvestbank",
+    "name": null
+   },
+   {
+    "type": "UnistreamCardRelease",
+    "name": null
+   },
+   {
+    "type": "UnistreamCardReleaseComission",
+    "name": null
+   },
+   {
+    "type": "Fmfb_Mobile",
+    "name": null
+   },
+   {
+    "type": "UzCard",
+    "name": "Пополнение карт Узбекистана UzCard"
+   },
+   {
+    "type": "Fmfb_Credit",
+    "name": null
+   },
+   {
+    "type": "Fmfb_CortyMilli",
+    "name": "Пополнение банковской карты Корти Милли"
+   },
+   {
+    "type": "Ding",
+    "name": "Платеж за мобильный (Ding)"
+   },
+   {
+    "type": "TopUpMobile",
+    "name": "Универсальный метод пополнения мобильной связи"
+   },
+   {
+    "type": "CardToCashTransfer",
+    "name": null
+   },
+   {
+    "type": "CardPayoutTransfer",
+    "name": null
+   },
+   {
+    "type": "AubPayment",
+    "name": null
+   },
+   {
+    "type": "SbpMe2MeInTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpMe2MeOutTransfer",
+    "name": null
+   },
+   {
+    "type": "IssuingCounterfeitToPolice",
+    "name": null
+   },
+   {
+    "type": "IssuingCounterfeitToPoliceReport",
+    "name": null
+   },
+   {
+    "type": "CounterfeitRegistration",
+    "name": null
+   },
+   {
+    "type": "CounterfeitRegistrationUnknown",
+    "name": null
+   },
+   {
+    "type": "Maxipay",
+    "name": null
+   },
+   {
+    "type": "UBPayPhoneTransfer",
+    "name": null
+   },
+   {
+    "type": "UBPayPhoneTransferLite",
+    "name": null
+   },
+   {
+    "type": "RuevSG",
+    "name": null
+   },
+   {
+    "type": "Pay2Net",
+    "name": null
+   },
+   {
+    "type": "UCardAcceptanceFromAnotherOffice",
+    "name": null
+   },
+   {
+    "type": "UCardDeliveryToAnotherOffice",
+    "name": null
+   },
+   {
+    "type": "UCardIssuanceToClient",
+    "name": null
+   },
+   {
+    "type": "UCardIssuanceSubreport",
+    "name": null
+   },
+   {
+    "type": "UCardAcceptanceSubreport",
+    "name": null
+   },
+   {
+    "type": "Ineko",
+    "name": null
+   },
+   {
+    "type": "QRPayTurkey",
+    "name": null
+   },
+   {
+    "type": "UnionPay",
+    "name": "Денежные переводы в Китай"
+   },
+   {
+    "type": "Profitable",
+    "name": "Пополнение карт Казахстана Profitable"
+   },
+   {
+    "type": "SbpC2GTransfer",
+    "name": null
+   },
+   {
+    "type": "SbpC2GPlTransfer",
+    "name": null
+   },
+   {
+    "type": "ReGeneratePaymentOrdersAfterCompleted",
+    "name": null
+   },
+   {
+    "type": "UCardDeliveryToHeadOffice",
+    "name": null
+   }
+  ],
+  "region": {
+   "id": 16,
+   "countryCode": "RUS",
+   "name": "Москва",
+   "currencies": [],
+   "subway": true,
+   "branches": null,
+   "_links": {
+    "self": "/api/v1/countries/RUS/regions/16"
+   }
+  },
   "bitrixName": "ОО 023",
   "noPromo": false,
   "exchangeManagerId": null,
@@ -3006,45 +3017,45 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -4021,15 +4032,15 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -5015,45 +5026,45 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -5854,10 +5865,6 @@
     "name": null
    },
    {
-    "type": "UnionPayCard",
-    "name": "Пополнение банковской карты China UnionPay через Compass"
-   },
-   {
     "type": "Runabank_refund",
     "name": null
    },
@@ -6030,15 +6037,15 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -7012,27 +7019,27 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.6,
-    "buyRate": 83.6,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 85.7,
+    "buyRate": 83.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 98.9,
-    "buyRate": 96.8,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 100.4,
+    "buyRate": 98.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    }
   ]
  },
@@ -8010,45 +8017,45 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -8844,6 +8851,10 @@
     "name": null
    },
    {
+    "type": "UnionPayCard",
+    "name": "Пополнение банковской карты China UnionPay через Compass"
+   },
+   {
     "type": "Runabank_refund",
     "name": null
    },
@@ -9016,15 +9027,15 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.6,
-    "buyRate": 83.6,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 85.7,
+    "buyRate": 83.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 98.9,
-    "buyRate": 96.8,
-    "lastUpdated": "2026-08-11T08:04:45+03:00"
+    "sellRate": 100.4,
+    "buyRate": 98.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    }
   ]
  },
@@ -10000,39 +10011,39 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -11014,45 +11025,45 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -12032,63 +12043,63 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "ILS",
-    "sellRate": 28,
-    "buyRate": 24,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 28.5,
+    "buyRate": 24.5,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "KZT",
-    "sellRate": 0.19,
-    "buyRate": 0.16,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 0.2,
+    "buyRate": 0.17,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AMD",
     "sellRate": 0.25,
-    "buyRate": 0.2,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 0.21,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -12896,10 +12907,6 @@
     "name": null
    },
    {
-    "type": "UnionPayCard",
-    "name": "Пополнение банковской карты China UnionPay через Compass"
-   },
-   {
     "type": "Runabank_refund",
     "name": null
    },
@@ -13072,57 +13079,57 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "KZT",
-    "sellRate": 0.19,
-    "buyRate": 0.16,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 0.2,
+    "buyRate": 0.17,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AMD",
     "sellRate": 0.25,
-    "buyRate": 0.2,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 0.21,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -14100,51 +14107,51 @@
   "exchangeRates": [
    {
     "currency": "USD",
-    "sellRate": 85.7,
-    "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 85.9,
+    "buyRate": 83.4,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.6,
+    "buyRate": 98.3,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "GBP",
-    "sellRate": 118,
+    "sellRate": 120,
     "buyRate": 110,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CHF",
-    "sellRate": 104,
-    "buyRate": 94,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 108,
+    "buyRate": 98,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    },
    {
     "currency": "KZT",
-    "sellRate": 0.19,
-    "buyRate": 0.16,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 0.2,
+    "buyRate": 0.17,
+    "lastUpdated": "2026-08-21T09:14:53+03:00"
    }
   ]
  },
@@ -14948,6 +14955,10 @@
     "name": null
    },
    {
+    "type": "UnionPayCard",
+    "name": "Пополнение банковской карты China UnionPay через Compass"
+   },
+   {
     "type": "Runabank_refund",
     "name": null
    },
@@ -15122,31 +15133,31 @@
     "currency": "USD",
     "sellRate": 85.7,
     "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.4,
+    "buyRate": 98.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "CNY",
-    "sellRate": 12.8,
-    "buyRate": 11.7,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 13.1,
+    "buyRate": 12.2,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "AED",
-    "sellRate": 23,
-    "buyRate": 21,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 24,
+    "buyRate": 22,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "TRY",
     "sellRate": 2,
-    "buyRate": 1.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "buyRate": 1.6,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    }
   ]
  },
@@ -16116,13 +16127,13 @@
     "currency": "USD",
     "sellRate": 85.7,
     "buyRate": 83.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    },
    {
     "currency": "EUR",
-    "sellRate": 99,
-    "buyRate": 96.5,
-    "lastUpdated": "2026-08-11T08:03:22+03:00"
+    "sellRate": 100.4,
+    "buyRate": 98.5,
+    "lastUpdated": "2026-08-21T09:15:53+03:00"
    }
   ]
  }

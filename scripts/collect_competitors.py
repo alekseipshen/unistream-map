@@ -34,9 +34,15 @@ def dist_m(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(math.sqrt(h))
 
 
-def load_branches():
+def load_branches(with_duty=True):
+    """Основные 16 плюс дежурные — конкуренты считаются вокруг всех сразу."""
     src = (ROOT / "data" / "branches.js").read_text()
-    return json.loads(re.search(r"const BRANCHES = (\[.*?\]);", src, re.S).group(1))
+    out = json.loads(re.search(r"const BRANCHES = (\[.*?\]);", src, re.S).group(1))
+    duty = ROOT / "data" / "branches_duty.js"
+    if with_duty and duty.exists():
+        out += json.loads(re.search(r"const BRANCHES_DUTY = (\[.*?\]);",
+                                    duty.read_text(), re.S).group(1))
+    return out
 
 
 def fetch_offices():

@@ -16,8 +16,10 @@ from pathlib import Path
 HERE = Path(__file__).parent
 OUT = HERE.parent / "data"
 
-# Отделения, которые курирует Игорь: номер -> id в системе Юнистрим
+# Отделения, которые курирует Игорь постоянно: номер -> id в системе Юнистрим
 BRANCH_IDS = json.load(open(HERE / "branch-ids.json"))
+# Отделения, которые добавляют на время дежурства (Москва + область), отдельный слой
+DUTY_IDS = json.load(open(HERE / "branch-ids-duty.json"))
 
 
 def fetch_json(url, lang="ru"):
@@ -29,24 +31,32 @@ def fetch_json(url, lang="ru"):
         return json.load(r)
 
 
-def load_branches(fetch):
+def load_branches(fetch, ids=None, cache="branches-full.json"):
+    ids = ids if ids is not None else BRANCH_IDS
     if fetch:
         out = {}
-        for num, bid in BRANCH_IDS.items():
-            out[num] = fetch_json(f"https://unistream.ru/api/poses/exchange/{bid}")
+        for num, bid in ids.items():
+            try:
+                out[num] = fetch_json(f"https://unistream.ru/api/poses/exchange/{bid}")
+            except Exception as e:
+                print(f"  {num} -> {bid} ОШИБКА: {e}", file=sys.stderr)
+                continue
             print(f"  {num} -> {bid} ok", file=sys.stderr)
-            time.sleep(1.5)
-        json.dump(out, open(HERE / "branches-full.json", "w"),
-                  ensure_ascii=False, indent=1)
+            time.sleep(1.0)
+        json.dump(out, open(HERE / cache, "w"), ensure_ascii=False, indent=1)
         return out
-    return json.load(open(HERE / "branches-full.json"))
+    return json.load(open(HERE / cache))
 
 
 def load_metro(fetch):
+    """Станции меняются раз в годы — если hh.ru недоступен, работаем на кэше."""
     if fetch:
-        d = fetch_json("https://api.hh.ru/metro/1")
-        json.dump(d, open(HERE / "metro-hh.json", "w"), ensure_ascii=False, indent=1)
-        return d
+        try:
+            d = fetch_json("https://api.hh.ru/metro/1")
+            json.dump(d, open(HERE / "metro-hh.json", "w"), ensure_ascii=False, indent=1)
+            return d
+        except Exception as e:
+            print(f"  hh.ru недоступен ({e}) — берём сохранённые станции", file=sys.stderr)
     return json.load(open(HERE / "metro-hh.json"))
 
 
@@ -215,6 +225,17 @@ def main():
         f.write(f"// generated {stamp}\nconst BRANCHES = ")
         json.dump(branches, f, ensure_ascii=False, separators=(",", ":"))
         f.write(f";\nconst DATA_BUILT_AT = {json.dumps(stamp)};\n")
+
+    # дежурные отделения — отдельный набор, включается слоем на карте
+    duty_raw = load_branches(fetch, DUTY_IDS, "branches-duty-full.json")
+    duty = build_branches(duty_raw)
+    for b, raw in zip(duty, (duty_raw[n] for n in sorted(duty_raw))):
+        b["city"] = (raw.get("region") or {}).get("name") or ""
+    with open(OUT / "branches_duty.js", "w") as f:
+        f.write(f"// generated {stamp}\nconst BRANCHES_DUTY = ")
+        json.dump(duty, f, ensure_ascii=False, separators=(",", ":"))
+        f.write(";\n")
+    print(f"дежурных отделений: {len(duty)}")
     with open(OUT / "metro.js", "w") as f:
         f.write(f"// generated {stamp}\nconst METRO = ")
         json.dump(metro, f, ensure_ascii=False, separators=(",", ":"))

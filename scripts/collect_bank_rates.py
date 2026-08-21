@@ -49,6 +49,12 @@ def norm(s):
 def load_js_array(name, const):
     src = (ROOT / "data" / name).read_text()
     return json.loads(re.search(rf"const {const} = (\[.*?\]);", src, re.S).group(1))
+def load_all_branches():
+    """Основные 16 плюс дежурные — конкуренты считаются вокруг всех сразу."""
+    out = load_js_array("branches.js", "BRANCHES")
+    if (ROOT / "data" / "branches_duty.js").exists():
+        out += load_js_array("branches_duty.js", "BRANCHES_DUTY")
+    return out
 
 
 def remote(script_name, timeout=600):
@@ -184,7 +190,7 @@ def main():
     if overridden:
         log("курс подтверждён офисными данными banki.ru: " + ", ".join(sorted(overridden)))
 
-    branches = load_js_array("branches.js", "BRANCHES")
+    branches = load_all_branches()
     known = load_js_array("competitors.js", "COMPETITORS")
     mf = build_mainfin_offices(mf_offices, banks, branches, known)
     per = {}

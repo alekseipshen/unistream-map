@@ -44,6 +44,12 @@ def norm_bank(s):
 def load_js_array(name, const):
     src = (ROOT / "data" / name).read_text()
     return json.loads(re.search(rf"const {const} = (\[.*?\]);", src, re.S).group(1))
+def load_all_branches():
+    """Основные 16 плюс дежурные — конкуренты считаются вокруг всех сразу."""
+    out = load_js_array("branches.js", "BRANCHES")
+    if (ROOT / "data" / "branches_duty.js").exists():
+        out += load_js_array("branches_duty.js", "BRANCHES_DUTY")
+    return out
 
 
 def fetch_osm(branches):
@@ -67,7 +73,7 @@ def fetch_osm(branches):
 
 
 def main():
-    branches = load_js_array("branches.js", "BRANCHES")
+    branches = load_all_branches()
     try:
         comps = load_js_array("competitors.js", "COMPETITORS")
     except FileNotFoundError:
@@ -112,7 +118,7 @@ def main():
     missing = [(i, p["lat"], p["lon"]) for i, p in enumerate(out) if not p["addr"]]
     if missing:
         print(f"без адреса: {len(missing)}, запрашиваем…", file=sys.stderr)
-        found = geocode.reverse_many(missing)
+        found = geocode.reverse_many(missing, limit=400)  # ~1 запрос в секунду, не больше часа
         for i, addr in found.items():
             if addr:
                 out[i]["addr"] = addr

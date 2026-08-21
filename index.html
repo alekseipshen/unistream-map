@@ -154,6 +154,13 @@
     line-height: 22px; box-shadow: 0 1px 4px rgba(0,0,0,.4); white-space: nowrap;
   }
   .brmarker.near { background: var(--blue); color: #fff; border-color: var(--yellow); }
+  /* дежурные отделения — светлые, чтобы не путать с постоянными */
+  .brmarker.duty { background: #fff; color: var(--blue); border-color: var(--blue); border-style: dashed; }
+  .num.duty { background: #fff; border: 2px solid var(--blue); }
+  .duty-tag {
+    font-size: 12px; font-weight: 700; color: var(--blue); background: #e8edf7;
+    border-radius: 20px; padding: 2px 9px;
+  }
   .stmarker {
     background: #d21f26; color: #fff; border-radius: 50%; text-align: center;
     font-weight: 800; line-height: 26px; font-size: 15px; border: 2px solid #fff;
@@ -193,6 +200,8 @@
 
 <script src="vendor/leaflet.js"></script>
 <script src="data/branches.js"></script>
+<script src="data/branches_duty.js"></script>
+<script src="data/competitors_oblast.js"></script>
 <script src="data/metro.js"></script>
 <script src="data/competitors.js"></script>
 <script src="data/poi.js"></script>
@@ -251,6 +260,14 @@ function freshness(at) {
   return { text: today ? `курс от ${time}` : `курс от ${day} ${time}`, stale: hours > 3 };
 }
 
+/* ---------- отделения: постоянные и дежурные ----------
+   Дежурные добавляют на неделю дежурства — держим их отдельным слоем,
+   чтобы в обычные дни они не мешали. Выбор запоминается между заходами. */
+const DUTY = typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
+DUTY.forEach(b => b.duty = true);
+let dutyOn = localStorage.getItem("dutyOn") === "1";
+const activeBranches = () => dutyOn ? BRANCHES.concat(DUTY) : BRANCHES;
+
 /* ---------- состояние ---------- */
 let station = null;        // выбранная станция {n, lat, lng, l}
 let selectedBranch = null; // подсвеченный офис
@@ -299,7 +316,8 @@ function renderCompMarkers() {
     points.push({ bank: c.bank, addr: c.address || c.name, lat: c.lat, lon: c.lon,
                   rates: c.rates, near: c.near[0], precision: "office", at: c.at });
   }
-  for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
+  for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
+                   ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])]) {
     points.push({ bank: o.bank, addr: o.address, lat: o.lat, lon: o.lon,
                   rates: o.rates, near: o.near[0], precision: "office", at: o.at });
   }
@@ -310,7 +328,7 @@ function renderCompMarkers() {
                          precision: r.same ? "uniform" : "city" });
   }
   for (const pt of points) {
-    const nearest = BRANCHES.find(b => b.num === pt.near.num);
+    const nearest = BRANCHES.concat(DUTY).find(b => b.num === pt.near.num);
     const beats = nearest && beatsAnything(nearest, pt);
     const size = pt.precision === "city" ? 11 : 14;  // курс по городу — точка помельче
     const icon = L.divIcon({
@@ -344,23 +362,46 @@ for (const p of (typeof POI !== "undefined" ? POI : [])) {
     .addTo(poiLayer);
 }
 
+// объявляем заранее: слой наполняется ниже, а контрол нужен здесь
+const dutyLayerRef = { layer: null };
+
+const brMarkers = {};
+function addBranchMarker(b, layer) {
+  const icon = L.divIcon({
+    className: "",
+    html: `<div class="brmarker${b.duty ? " duty" : ""}" id="mk${b.num}">${b.num}</div>`,
+    iconSize: [44, 26], iconAnchor: [22, 13]
+  });
+  const mk = L.marker([b.lat, b.lon], { icon });
+  mk.on("click", () => selectBranch(b.num, true));
+  mk.addTo(layer);
+  brMarkers[b.num] = mk;
+}
+for (const b of BRANCHES) addBranchMarker(b, map);
+
+const dutyLayer = L.layerGroup();
+for (const b of DUTY) addBranchMarker(b, dutyLayer);
+if (dutyOn) dutyLayer.addTo(map);
+
 L.control.layers(null, {
+  [`Дежурные отделения (${DUTY.length})`]: dutyLayer,
   "Линии и станции метро": metroLayer,
   "Конкуренты с курсами": compLayer,
   "Другие банки рядом": poiLayer,
 }, { collapsed: false, position: "topright" }).addTo(map);
 
-const brMarkers = {};
-for (const b of BRANCHES) {
-  const icon = L.divIcon({ className: "", html: `<div class="brmarker" id="mk${b.num}">${b.num}</div>`, iconSize: [44, 26], iconAnchor: [22, 13] });
-  const mk = L.marker([b.lat, b.lon], { icon }).addTo(map);
-  mk.on("click", () => { selectBranch(b.num, true); });
-  brMarkers[b.num] = mk;
-}
+map.on("overlayadd overlayremove", e => {
+  if (e.layer !== dutyLayer) return;
+  dutyOn = e.type === "overlayadd";
+  localStorage.setItem("dutyOn", dutyOn ? "1" : "0");
+  if (dutyOn) refreshRates(DUTY);   // курсы дежурных тянем только когда они нужны
+  render();
+});
+
 let stMarker = null, linkLines = [];
 fitAll();
 function fitAll() {
-  map.fitBounds(L.latLngBounds(BRANCHES.map(b => [b.lat, b.lon])).pad(0.08));
+  map.fitBounds(L.latLngBounds(activeBranches().map(b => [b.lat, b.lon])).pad(0.08));
 }
 
 /* ---------- поиск станции ---------- */
@@ -425,8 +466,8 @@ function selectBranch(num, scroll) {
 
 /* ---------- отрисовка ---------- */
 function branchesSorted() {
-  if (!station) return [...BRANCHES].sort((a, b) => a.num.localeCompare(b.num));
-  return [...BRANCHES]
+  if (!station) return [...activeBranches()].sort((a, b) => a.num.localeCompare(b.num));
+  return [...activeBranches()]
     .map(b => ({ ...b, d: distM(station.lat, station.lng, b.lat, b.lon) }))
     .sort((a, b) => a.d - b.d);
 }
@@ -494,8 +535,9 @@ for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
     d: n.d,
   });
 }
-// отделения из mainfin: курс тоже по конкретному офису, адрес свой, координаты по геокодеру
-for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : [])) {
+// отделения из mainfin по Москве и по городам области: курс по конкретному офису
+for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
+                 ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])]) {
   for (const n of o.near) (COMP_BY_BRANCH[n.num] ||= []).push({
     c: { bank: o.bank, address: o.address, rates: o.rates, precision: "office",
          lat: o.lat, lon: o.lon, at: o.at },
@@ -679,7 +721,8 @@ function card(b) {
     : `https://yandex.ru/maps/?pt=${b.lon},${b.lat}&z=17`;
   return `<div class="card ${selectedBranch === b.num ? "selected" : ""}" id="card${b.num}" onclick="selectBranch('${b.num}', false); map.setView([${b.lat}, ${b.lon}], 15);">
     <div class="toprow">
-      <span class="num">№ ${b.num}</span>
+      <span class="num${b.duty ? " duty" : ""}">№ ${b.num}</span>
+      ${b.duty ? `<span class="duty-tag">дежурное${b.city && b.city !== "Москва" ? " · " + b.city : ""}</span>` : ""}
       ${w ? `<span class="walk">${w.txt}</span>` : ""}
     </div>
     <div class="addr">${b.address}</div>
@@ -711,21 +754,31 @@ function renderPanel() {
 }
 
 /* ---------- живые курсы ---------- */
-async function refreshRates() {
+async function refreshRates(only) {
+  const targets = only || activeBranches();
   document.getElementById("ratesStamp").textContent = "Курсы: обновляю…";
-  const jobs = BRANCHES.map(async b => {
-    const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
-    if (!r.ok) throw new Error(r.status);
-    const d = await r.json();
-    b.rates = (d.exchangeRates || []).map(x => ({ cur: x.currency, buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }));
-    b.currencies = d.currencies || b.currencies;
-  });
-  const res = await Promise.allSettled(jobs);
-  const ok = res.filter(r => r.status === "fulfilled").length;
+  // по 8 запросов за раз: дежурных 81, разом браузер их не тянет
+  const queue = [...targets];
+  let ok = 0;
+  async function worker() {
+    while (queue.length) {
+      const b = queue.shift();
+      try {
+        const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
+        if (!r.ok) throw new Error(r.status);
+        const d = await r.json();
+        b.rates = (d.exchangeRates || []).map(x => ({ cur: x.currency, buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }));
+        b.currencies = d.currencies || b.currencies;
+        ok++;
+      } catch (e) { /* отделение оставим на сохранённых курсах */ }
+    }
+  }
+  await Promise.all(Array.from({ length: 8 }, worker));
+  const total = targets.length;
   const t = new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" });
   ratesFetchedAt = t;
   document.getElementById("ratesStamp").textContent = ok
-    ? `Курсы обновлены в ${t}${ok < BRANCHES.length ? ` (${ok}/${BRANCHES.length})` : ""}`
+    ? `Курсы обновлены в ${t}${ok < total ? ` (${ok}/${total})` : ""}`
     : `Live-курсы недоступны — показаны сохранённые от ${new Date(DATA_BUILT_AT).toLocaleDateString("ru-RU")}`;
   renderCompMarkers();
   renderPanel();

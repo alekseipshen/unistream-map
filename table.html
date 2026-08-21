@@ -78,6 +78,7 @@
   <label>Валюта
     <select id="cur"></select>
   </label>
+  <label><input type="checkbox" id="duty"> показывать дежурные отделения</label>
   <label><input type="checkbox" id="onlyWorse"> только там, где у соседей выгоднее</label>
   <label><input type="checkbox" id="expandAll"> раскрыть все отделения</label>
   <button id="csv">Скачать CSV</button>
@@ -97,8 +98,10 @@
 </div>
 
 <script src="data/branches.js"></script>
+<script src="data/branches_duty.js"></script>
 <script src="data/competitors.js"></script>
 <script src="data/offices_mainfin.js"></script>
+<script src="data/competitors_oblast.js"></script>
 <script src="data/poi.js"></script>
 <script src="data/bankrates.js"></script>
 <script>
@@ -135,7 +138,8 @@ for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : []))
   for (const n of c.near) (RIVALS[n.num] ||= []).push({
     bank: c.bank, addr: c.address || c.name, d: n.d, rates: c.rates,
     kind: "курс отделения", at: c.at, lat: c.lat, lon: c.lon });
-for (const o of (typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []))
+for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
+                 ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])])
   for (const n of o.near) (RIVALS[n.num] ||= []).push({
     bank: o.bank, addr: o.address, d: n.d, rates: o.rates,
     kind: "курс отделения", at: o.at, lat: o.lat, lon: o.lon });
@@ -162,20 +166,34 @@ for (const k in RIVALS) {
   });
 }
 
+/* ---------- отделения: постоянные и дежурные ---------- */
+const DUTY = typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
+DUTY.forEach(b => b.duty = true);
+let dutyOn = localStorage.getItem("dutyOn") === "1";
+const activeBranches = () => dutyOn ? BRANCHES.concat(DUTY) : BRANCHES;
+
 /* ---------- живые курсы наших отделений ---------- */
 const OURS = {};
-for (const b of BRANCHES) OURS[b.num] = Object.fromEntries(b.rates.map(r => [r.cur, { buy: r.buy, sell: r.sell, at: r.at }]));
+for (const b of BRANCHES.concat(DUTY))
+  OURS[b.num] = Object.fromEntries(b.rates.map(r => [r.cur, { buy: r.buy, sell: r.sell, at: r.at }]));
 
 async function refresh() {
   document.getElementById("stamp").textContent = "Курсы: обновляю…";
-  const jobs = BRANCHES.map(async b => {
-    const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
-    const d = await r.json();
-    OURS[b.num] = Object.fromEntries((d.exchangeRates || []).map(x =>
-      [x.currency, { buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }]));
-  });
-  const res = await Promise.allSettled(jobs);
-  const ok = res.filter(r => r.status === "fulfilled").length;
+  const queue = [...activeBranches()];   // дежурных до 81 — тянем пулом по 8
+  let ok = 0;
+  async function worker() {
+    while (queue.length) {
+      const b = queue.shift();
+      try {
+        const r = await fetch(`https://unistream.ru/api/poses/exchange/${b.id}`, { headers: { "Accept-Language": "ru" } });
+        const d = await r.json();
+        OURS[b.num] = Object.fromEntries((d.exchangeRates || []).map(x =>
+          [x.currency, { buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }]));
+        ok++;
+      } catch (e) { /* останется на сохранённых курсах */ }
+    }
+  }
+  await Promise.all(Array.from({ length: 8 }, worker));
   document.getElementById("stamp").textContent = ok
     ? `Курсы обновлены в ${new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" })}`
     : "Live-курсы недоступны — показаны сохранённые";
@@ -186,7 +204,7 @@ async function refresh() {
 const state = { cur: "USD", onlyWorse: false, expanded: new Set() };
 
 const curSel = document.getElementById("cur");
-const allCurs = [...new Set(BRANCHES.flatMap(b => b.rates.map(r => r.cur)))];
+const allCurs = [...new Set(BRANCHES.concat(DUTY).flatMap(b => b.rates.map(r => r.cur)))];
 for (const c of ["USD", "EUR", ...allCurs.filter(c => !["USD", "EUR"].includes(c))]) {
   const o = document.createElement("option");
   o.value = o.textContent = c;
@@ -217,7 +235,7 @@ function render() {
     <th>Лучшая покупка<br>рядом</th><th>Дешевле всех<br>продают</th>
     <th class="l">Комментарий</th></tr>`];
 
-  for (const b of BRANCHES) {
+  for (const b of activeBranches()) {
     const our = OURS[b.num][cur];
     const list = rivalsFor(b.num);
     const better = list.filter(r => r.buyBetter || r.sellBetter).length;
@@ -234,7 +252,8 @@ function render() {
     else { note = `у ${better} из ${list.length} курс выгоднее для клиента`; }
 
     rows.push(`<tr class="branch" data-num="${b.num}">
-      <td class="l"><span class="caret">${open ? "▾" : "▸"}</span> № ${b.num}</td>
+      <td class="l"><span class="caret">${open ? "▾" : "▸"}</span> № ${b.num}${
+        b.duty ? ` <span class="pill ok" style="background:#e8edf7;color:var(--blue)">дежурное</span>` : ""}</td>
       <td class="l">${b.address}</td>
       <td class="l muted">${b.metro.join(", ") || "—"}</td>
       <td>${list.length}${NORATE[b.num] ? `<span class="muted"> +${NORATE[b.num]} без курсов</span>` : ""}${
@@ -282,7 +301,7 @@ function toCSV() {
   const cur = state.cur;
   const out = [["Отделение", "Адрес отделения", "Банк рядом", "Адрес банка", "Тип данных",
                 "Метров", "Валюта", "Покупает", "Продаёт", "Наш курс покупки", "Наш курс продажи"]];
-  for (const b of BRANCHES) {
+  for (const b of activeBranches()) {
     const our = OURS[b.num][cur];
     for (const r of rivalsFor(b.num))
       out.push([`№ ${b.num}`, b.address, r.bank, r.addr, r.kind, r.d, cur,
@@ -298,8 +317,15 @@ function toCSV() {
 curSel.addEventListener("change", () => { state.cur = curSel.value; render(); });
 document.getElementById("onlyWorse").addEventListener("change", e => { state.onlyWorse = e.target.checked; render(); });
 document.getElementById("expandAll").addEventListener("change", e => {
-  state.expanded = e.target.checked ? new Set(BRANCHES.map(b => b.num)) : new Set();
+  state.expanded = e.target.checked ? new Set(activeBranches().map(b => b.num)) : new Set();
   render();
+});
+document.getElementById("duty").checked = dutyOn;
+document.getElementById("duty").addEventListener("change", e => {
+  dutyOn = e.target.checked;
+  localStorage.setItem("dutyOn", dutyOn ? "1" : "0");
+  render();
+  if (dutyOn) refresh();          // курсы дежурных тянем только когда их показывают
 });
 document.getElementById("csv").addEventListener("click", toCSV);
 document.getElementById("print").addEventListener("click", () => window.print());

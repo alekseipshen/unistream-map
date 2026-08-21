@@ -14,7 +14,8 @@ import time
 import urllib.error
 import urllib.request
 
-URL = "https://mainfin.ru/currency/moskva"
+CITY = sys.argv[1] if len(sys.argv) > 1 else "moskva"
+URL = f"https://mainfin.ru/currency/{CITY}"
 HEADERS = {
     "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
@@ -23,11 +24,19 @@ HEADERS = {
 }
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Города без своей страницы редиректят на Москву — принимать это нельзя,
+    иначе московские курсы уедут в карточки подмосковных отделений."""
+    def redirect_request(self, *a, **kw):
+        return None
+
+
 def fetch(attempts=3):
+    opener = urllib.request.build_opener(NoRedirect)
     for i in range(attempts):
         try:
             req = urllib.request.Request(URL, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with opener.open(req, timeout=60) as r:
                 return r.read().decode("utf-8", "replace")
         except (urllib.error.URLError, TimeoutError) as e:
             if i == attempts - 1:
