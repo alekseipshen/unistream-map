@@ -63,7 +63,9 @@ def remote(script_name, timeout=600):
         ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST, "python3 -"],
         input=script, capture_output=True, timeout=timeout)
     if p.returncode != 0:
-        raise RuntimeError(f"ssh/{script_name} failed: {p.stderr.decode()[:300]}")
+        # именно хвост: в начале stderr идёт построчный прогресс по валютам,
+        # который вытеснял из алерта настоящую причину падения
+        raise RuntimeError(f"ssh/{script_name} failed: ...{p.stderr.decode()[-300:]}")
     return json.loads(p.stdout.decode())
 
 
@@ -127,7 +129,12 @@ def office_rates_by_bank():
     Если у банка во всех офисах Москвы курс совпадает — берём его вместо городского
     из mainfin: это фактические данные, а не оценка. Заодно избавляет от ситуации,
     когда рядом две точки одного банка показывают разные цифры из разных источников."""
-    offices = remote("remote_fetch_banki.py")["offices"]
+    from collect_competitors import cached_offices
+    offices, age = cached_offices()
+    if offices:   # их только что принёс collect_competitors в этом же прогоне
+        log(f"  banki.ru: {len(offices)} офисов из кэша ({age:.0f}s назад)")
+    else:
+        offices = remote("remote_fetch_banki.py")["offices"]
     grouped = {}
     for o in offices:
         for cur, r in o["rates"].items():
@@ -229,5 +236,7 @@ if __name__ == "__main__":
         if "--dry-run" not in sys.argv:
             sys.path.insert(0, str(HERE))
             from collect_competitors import alert
-            alert(f"Unistream map: сборщик курсов банков (mainfin) упал.\n{type(e).__name__}: {e}")
+            # без «(mainfin)» в тексте: сборщик ходит и в mainfin, и в banki.ru,
+            # а подпись врала про источник — источник теперь виден из самой ошибки
+            alert(f"Unistream map: сборщик курсов банков упал.\n{type(e).__name__}: {e}")
         sys.exit(1)

@@ -12,6 +12,7 @@ import math
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,6 +21,13 @@ ROOT = HERE.parent
 RADIUS_M = 1000
 SSH_HOST = "ruvds"
 OUR_BANK_MARKERS = ("юнистрим", "unistream")
+
+# Один прогон сервиса запускает два сборщика подряд, и обоим нужны одни и те же
+# офисы banki.ru — раньше каждый ходил за ними сам, то есть 20 запросов к
+# источнику каждые 30 минут вместо 10. Именно на этом banki.ru начинал рвать
+# соединение. Сборщики идут друг за другом за секунды, данные заведомо те же.
+CACHE = HERE / "state" / "banki_offices.json"
+CACHE_TTL = 900
 
 
 def log(msg):
@@ -45,6 +53,17 @@ def load_branches(with_duty=True):
     return out
 
 
+def cached_offices(max_age=CACHE_TTL):
+    """Офисы из свежего кэша или None. Общая точка для обоих сборщиков."""
+    try:
+        age = time.time() - CACHE.stat().st_mtime
+        if age <= max_age:
+            return json.loads(CACHE.read_text())["offices"], age
+    except (OSError, ValueError, KeyError):
+        pass          # кэша нет или он битый — просто сходим на источник
+    return None, None
+
+
 def fetch_offices():
     """Запускает remote_fetch_banki.py на RuVDS, возвращает список офисов."""
     script = (HERE / "remote_fetch_banki.py").read_bytes()
@@ -52,10 +71,18 @@ def fetch_offices():
         ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST, "python3 -"],
         input=script, capture_output=True, timeout=600)
     if p.returncode != 0:
-        raise RuntimeError(f"ssh/fetch failed: {p.stderr.decode()[:400]}")
+        # хвост, а не начало: в начале идёт построчный прогресс по валютам,
+        # и он вытеснял из алерта саму ошибку
+        raise RuntimeError(f"ssh/fetch failed: ...{p.stderr.decode()[-400:]}")
     for line in p.stderr.decode().strip().splitlines():
         log("  banki.ru " + line)
-    return json.loads(p.stdout.decode())["offices"]
+    offices = json.loads(p.stdout.decode())["offices"]
+    try:
+        CACHE.parent.mkdir(parents=True, exist_ok=True)
+        CACHE.write_text(json.dumps({"offices": offices}, ensure_ascii=False))
+    except OSError as e:
+        log(f"  кэш не записан ({e}) — не критично, следующий сборщик сходит сам")
+    return offices
 
 
 def build(offices, branches):

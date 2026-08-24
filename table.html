@@ -168,7 +168,7 @@ for (const k in RIVALS) {
 
 /* ---------- отделения: постоянные и дежурные ---------- */
 // Отделения УРКО временно скрыты с сайта — вернуть можно этим флагом (и таким же в index.html)
-const SHOW_DUTY = false;
+const SHOW_DUTY = true;
 const DUTY = SHOW_DUTY && typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
 DUTY.forEach(b => b.duty = true);
 let dutyOn = SHOW_DUTY && localStorage.getItem("dutyOn") === "1";

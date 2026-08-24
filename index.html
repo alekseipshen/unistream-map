@@ -265,7 +265,7 @@ function freshness(at) {
    чтобы в обычные дни они не мешали. Выбор запоминается между заходами. */
 // Слой отделений УРКО временно скрыт с сайта. Данные, сборщики и таймеры на месте —
 // чтобы вернуть, поставить true здесь и в table.html.
-const SHOW_DUTY = false;
+const SHOW_DUTY = true;
 const DUTY = SHOW_DUTY && typeof BRANCHES_DUTY !== "undefined" ? BRANCHES_DUTY : [];
 DUTY.forEach(b => b.duty = true);
 let dutyOn = SHOW_DUTY && localStorage.getItem("dutyOn") === "1";

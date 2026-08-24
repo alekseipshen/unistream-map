@@ -5,7 +5,9 @@
 адресам anti-bot заглушку вместо данных. Обязателен заголовок X-Requested-With,
 иначе endpoint отвечает 404.
 """
+import http.client
 import json
+import random
 import sys
 import time
 import urllib.error
@@ -30,25 +32,43 @@ HEADERS = {
 }
 
 
-def fetch(code, cid, attempts=3):
+# Ловим широко и намеренно. Прошлый набор (URLError, JSONDecodeError, TimeoutError)
+# пропускал ровно тот сбой, который случается на практике: banki.ru обрывает
+# соединение НА ЧТЕНИИ ТЕЛА после 6-7 быстрых запросов, и это прилетает как
+# ConnectionResetError или http.client.IncompleteRead прямо изнутри json.load()
+# (трейс указывает на json/__init__.py, хотя джейсон ни при чём). IncompleteRead
+# вообще не наследник OSError, а UnicodeDecodeError — не наследник JSONDecodeError,
+# поэтому оба пролетали мимо retry и роняли весь прогон.
+#   OSError               -> URLError, TimeoutError, ConnectionResetError
+#   http.client.HTTPException -> IncompleteRead, BadStatusLine
+#   ValueError            -> JSONDecodeError (анти-бот отдал HTML), UnicodeDecodeError
+TRANSIENT = (OSError, http.client.HTTPException, ValueError)
+BACKOFF = (8, 20, 45)
+
+
+def fetch(code, cid):
     url = URL.format(cid=cid, region=REGION, code=code)
-    for i in range(attempts):
+    for i, pause in enumerate(BACKOFF + (None,)):
         try:
             req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=60) as r:
                 return json.load(r)
-        except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
-            if i == attempts - 1:
-                print(f"WARN {code}: {e}", file=sys.stderr)
+        except TRANSIENT as e:
+            if pause is None:
+                print(f"WARN {code}: {type(e).__name__}: {e}", file=sys.stderr)
                 return None
-            time.sleep(5 * (i + 1))
+            print(f"  retry {code} #{i + 1} через {pause}s: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+            time.sleep(pause + random.uniform(0, 3))
 
 
 def main():
     offices = {}
+    failed = []
     for code, cid in CURRENCIES.items():
         d = fetch(code, cid)
         if not d:
+            failed.append(code)
             continue
         for o in d.get("list", []):
             c = o.get("coordinates") or {}
@@ -74,7 +94,13 @@ def main():
                     "at": ex.get("refreshDate"),
                 }
         print(f"{code}: {d.get('totalItems')} offices", file=sys.stderr)
-        time.sleep(2)
+        time.sleep(3)   # banki.ru рвёт соединение на частых запросах подряд
+    # Отдать карте набор без основных валют хуже, чем упасть: молча пропадут
+    # курсы у сотен точек, и это никак не будет видно ни в UI, ни в логе.
+    if {"USD", "EUR"} & set(failed):
+        raise RuntimeError("не получены основные валюты: " + ", ".join(failed))
+    if failed:
+        print(f"пропущены валюты: {', '.join(failed)}", file=sys.stderr)
     json.dump({"offices": list(offices.values())}, sys.stdout, ensure_ascii=False)
 
 
