@@ -393,10 +393,15 @@ L.control.layers(null, {
   "Другие банки рядом": poiLayer,
 }, { collapsed: false, position: "topright" }).addTo(map);
 
+// Слой может добавиться ещё при инициализации (если выбор сохранён в localStorage).
+// Тогда обработчик срабатывает до объявления констант ниже по файлу — рисовать нельзя,
+// иначе ReferenceError обрывает весь скрипт: панель остаётся пустой, клики мёртвые.
+let uiReady = false;
 map.on("overlayadd overlayremove", e => {
   if (e.layer !== dutyLayer) return;
   dutyOn = e.type === "overlayadd";
   localStorage.setItem("dutyOn", dutyOn ? "1" : "0");
+  if (!uiReady) return;             // первую отрисовку сделает код в самом конце файла
   if (dutyOn) refreshRates(DUTY);   // курсы дежурных тянем только когда они нужны
   render();
 });
@@ -789,6 +794,7 @@ async function refreshRates(only) {
 document.getElementById("refreshBtn").addEventListener("click", refreshRates);
 setInterval(refreshRates, 10 * 60 * 1000);
 
+uiReady = true;
 render();
 refreshRates();
 </script>
