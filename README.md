@@ -36,6 +36,12 @@ git add -A && git commit -m "refresh data" && git push
 - ⚠️ **banki.ru и mainfin.ru отдают данные только на российский IP** (иначе anti-bot заглушка и 403),
   поэтому HTTP-запросы выполняются на RuVDS через ssh (`scripts/remote_fetch_*.py`),
   а обработка и git push — на Hetzner.
+- ⚠️ **RuVDS слабый: 2 ядра, 4 ГБ, и на нём же Coolify, n8n и Matrix-стек.** Когда там кончается
+  память, sshd не успевает отдать баннер, и мы ловили `Connection timed out during banner exchange`.
+  Все ssh-заходы идут через `scripts/remote.py`: ConnectTimeout 90 с, три повтора (30/90/180 с).
+  Областной сборщик забирает все 15 городов **одним** заходом, а не пятнадцатью.
+  Алерты в Telegram с паузой 2 часа на одинаковый текст — иначе при лежащем сервере
+  топик заваливает одним и тем же каждые полчаса.
 - Обновление: systemd timer `unistream-competitors.timer` на Hetzner, **каждые 30 минут
   с 08:05 до 22:35 МСК**. Сервис прогоняет оба сборщика с `--no-commit`, затем `publish.py`
   делает один коммит на все изменившиеся `data/*.js` (иначе GitHub Pages пересобирался

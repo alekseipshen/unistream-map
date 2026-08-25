@@ -52,16 +52,11 @@ def load_js_array(name, const):
     return json.loads(re.search(rf"const {const} = (\[.*?\]);", src, re.S).group(1))
 
 
-def fetch_city(slug):
-    p = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST,
-         f"python3 - {slug}"],
-        input=(HERE / "remote_fetch_mainfin.py").read_bytes(),
-        capture_output=True, timeout=420)  # с запасом на retry при 403
-    if p.returncode != 0:
-        log(f"  {slug}: не получилось ({p.stderr.decode()[:120]})")
-        return None
-    return json.loads(p.stdout.decode())
+def fetch_cities(slugs):
+    """Все города одним ssh-заходом: на RuVDS с 2 ядрами пачка сессий — лишняя нагрузка."""
+    import remote as ssh
+    d = ssh.run("remote_fetch_mainfin.py", args=",".join(slugs), timeout=1200, log=log)
+    return d.get("cities", {})
 
 
 def main():
@@ -74,13 +69,17 @@ def main():
             by_city.setdefault(b["city"], []).append(b)
 
     skipped = sorted(set(by_city) - set(CITY_SLUGS))
+    wanted = {c: CITY_SLUGS[c] for c in by_city if c in CITY_SLUGS}
+    fetched = fetch_cities(sorted(wanted.values()))
+
     out = []
     for city, branches in sorted(by_city.items()):
         slug = CITY_SLUGS.get(city)
         if not slug:
             continue
-        d = fetch_city(slug)
+        d = fetched.get(slug)
         if not d:
+            log(f"  {city} ({slug}): данных нет, пропускаем")
             continue
         names = {b["alias"]: b["name"] for b in d["banks"]}
         offices = d.get("offices", [])

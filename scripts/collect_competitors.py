@@ -66,17 +66,8 @@ def cached_offices(max_age=CACHE_TTL):
 
 def fetch_offices():
     """Запускает remote_fetch_banki.py на RuVDS, возвращает список офисов."""
-    script = (HERE / "remote_fetch_banki.py").read_bytes()
-    p = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST, "python3 -"],
-        input=script, capture_output=True, timeout=600)
-    if p.returncode != 0:
-        # хвост, а не начало: в начале идёт построчный прогресс по валютам,
-        # и он вытеснял из алерта саму ошибку
-        raise RuntimeError(f"ssh/fetch failed: ...{p.stderr.decode()[-400:]}")
-    for line in p.stderr.decode().strip().splitlines():
-        log("  banki.ru " + line)
-    offices = json.loads(p.stdout.decode())["offices"]
+    import remote as ssh   # общий помощник: длинный ConnectTimeout + повторы
+    offices = ssh.run("remote_fetch_banki.py", timeout=600, log=log)["offices"]
     try:
         CACHE.parent.mkdir(parents=True, exist_ok=True)
         CACHE.write_text(json.dumps({"offices": offices}, ensure_ascii=False))
@@ -162,14 +153,35 @@ def commit_and_push():
     return True
 
 
+ALERT_COOLDOWN_MIN = 120   # сборщик ходит раз в 30 мин; пока RuVDS лежит, хватит одного письма
+
+
 def alert(text):
-    """Пишет в топик Alert командного центра — иначе сбой сборщика останется незамеченным."""
+    """Пишет в топик Alert командного центра — иначе сбой сборщика останется незамеченным.
+
+    С паузой между одинаковыми сообщениями: при недоступном RuVDS прогон падает
+    каждые полчаса, и без этого топик засыпало бы одним и тем же."""
     sender = Path("/root/My-Digital-Brain/scripts/weekly-loop/tg_send.py")
     if not sender.exists():
         return
+    mark = HERE / "state" / "last_alert.json"
+    key = re.sub(r"\d", "", text)[:120]     # цифры (время, счётчики) в ключ не берём
+    now = datetime.now(timezone.utc).timestamp()
+    try:
+        prev = json.loads(mark.read_text())
+        if prev.get("key") == key and now - prev.get("at", 0) < ALERT_COOLDOWN_MIN * 60:
+            log(f"алерт подавлен: то же самое было {int((now - prev['at']) / 60)} мин назад")
+            return
+    except (OSError, ValueError):
+        pass
     subprocess.run([sys.executable, str(sender), "--chat", "-1003488817834",
                     "--thread", "7113", "--text", text],
                    capture_output=True, timeout=60)
+    try:
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        mark.write_text(json.dumps({"key": key, "at": now}))
+    except OSError:
+        pass
 
 
 def main():

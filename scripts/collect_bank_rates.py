@@ -58,15 +58,8 @@ def load_all_branches():
 
 
 def remote(script_name, timeout=600):
-    script = (HERE / script_name).read_bytes()
-    p = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=20", "-o", "BatchMode=yes", SSH_HOST, "python3 -"],
-        input=script, capture_output=True, timeout=timeout)
-    if p.returncode != 0:
-        # именно хвост: в начале stderr идёт построчный прогресс по валютам,
-        # который вытеснял из алерта настоящую причину падения
-        raise RuntimeError(f"ssh/{script_name} failed: ...{p.stderr.decode()[-300:]}")
-    return json.loads(p.stdout.decode())
+    import remote as ssh   # общий помощник: длинный ConnectTimeout + повторы
+    return ssh.run(script_name, timeout=timeout, log=log)
 
 
 def fetch_mainfin():

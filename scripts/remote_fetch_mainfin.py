@@ -16,8 +16,10 @@ import time
 import urllib.error
 import urllib.request
 
-CITY = sys.argv[1] if len(sys.argv) > 1 else "moskva"
-URL = f"https://mainfin.ru/currency/{CITY}"
+# Можно передать несколько городов через запятую — тогда один ssh-заход вместо
+# пятнадцати. RuVDS с 2 ядрами и 4 ГБ болезненно относится к пачке сессий.
+CITIES = (sys.argv[1] if len(sys.argv) > 1 else "moskva").split(",")
+URL = f"https://mainfin.ru/currency/{CITIES[0]}"
 HEADERS = {
     "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"),
@@ -41,7 +43,8 @@ RETRY_STATUS = {403, 408, 429, 500, 502, 503, 504}
 BACKOFF = (8, 20, 45)
 
 
-def fetch():
+def fetch(url=None):
+    url = url or URL
     # Куки живут между попытками: челлендж ставит cookie, со следующего захода
     # с ней страница обычно отдаётся сразу.
     jar = http.cookiejar.CookieJar()
@@ -49,7 +52,7 @@ def fetch():
                                          urllib.request.HTTPCookieProcessor(jar))
     for i, pause in enumerate(BACKOFF + (None,)):
         try:
-            req = urllib.request.Request(URL, headers=HEADERS)
+            req = urllib.request.Request(url, headers=HEADERS)
             with opener.open(req, timeout=60) as r:
                 return r.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as e:   # подкласс URLError — ловим первым
@@ -116,11 +119,26 @@ def parse_offices(html):
 
 
 def main():
-    html = fetch()
-    banks = parse(html)
-    offices = parse_offices(html)
-    print(f"mainfin: {len(banks)} банков, {len(offices)} отделений с курсами", file=sys.stderr)
-    json.dump({"banks": banks, "offices": offices}, sys.stdout, ensure_ascii=False)
+    if len(CITIES) == 1:
+        html = fetch()
+        banks, offices = parse(html), parse_offices(html)
+        print(f"mainfin: {len(banks)} банков, {len(offices)} отделений с курсами",
+              file=sys.stderr)
+        json.dump({"banks": banks, "offices": offices}, sys.stdout, ensure_ascii=False)
+        return
+    # несколько городов за один заход: по городу — свой блок в ответе
+    out = {}
+    for city in CITIES:
+        try:
+            html = fetch(f"https://mainfin.ru/currency/{city}")
+        except Exception as e:
+            print(f"{city}: пропущен ({type(e).__name__}: {e})", file=sys.stderr)
+            continue
+        banks, offices = parse(html), parse_offices(html)
+        out[city] = {"banks": banks, "offices": offices}
+        print(f"{city}: банков {len(banks)}, отделений {len(offices)}", file=sys.stderr)
+        time.sleep(2)
+    json.dump({"cities": out}, sys.stdout, ensure_ascii=False)
 
 
 if __name__ == "__main__":
