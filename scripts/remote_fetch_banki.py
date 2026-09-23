@@ -7,11 +7,23 @@
 """
 import http.client
 import json
+import os
 import random
 import sys
 import time
 import urllib.error
 import urllib.request
+
+# Свой потолок на весь прогон. Снаружи нас всё равно обрубит ssh (см. remote.py),
+# но обрубленный прогон возвращает НОЛЬ данных, а свой дедлайн — то, что успели.
+# Валюты идут по важности, USD и EUR первыми, поэтому режется всегда хвост.
+DEADLINE = max(60.0, float(os.environ.get("UNISTREAM_DEADLINE", 555)) - 25)
+START = time.monotonic()
+REQ_TIMEOUT = 30    # нормальный ответ — около секунды; 60 с съедало бюджет одним запросом
+
+
+def left():
+    return DEADLINE - (time.monotonic() - START)
 
 # ISO-код -> цифровой код валюты в API banki.ru
 CURRENCIES = {
@@ -49,12 +61,17 @@ BACKOFF = (8, 20, 45)
 def fetch(code, cid):
     url = URL.format(cid=cid, region=REGION, code=code)
     for i, pause in enumerate(BACKOFF + (None,)):
+        if left() < REQ_TIMEOUT:
+            print(f"WARN {code}: бюджет прогона исчерпан, не запрашиваем", file=sys.stderr)
+            return None
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=60) as r:
+            with urllib.request.urlopen(req, timeout=REQ_TIMEOUT) as r:
                 return json.load(r)
         except TRANSIENT as e:
-            if pause is None:
+            # на последней попытке и когда на повтор уже нет времени — сдаёмся
+            # по этой валюте, но отдаём остальные: молчаливое зависание хуже
+            if pause is None or left() < pause + REQ_TIMEOUT:
                 print(f"WARN {code}: {type(e).__name__}: {e}", file=sys.stderr)
                 return None
             print(f"  retry {code} #{i + 1} через {pause}s: {type(e).__name__}: {e}",

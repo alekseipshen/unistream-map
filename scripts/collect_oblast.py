@@ -71,6 +71,12 @@ def main():
     skipped = sorted(set(by_city) - set(CITY_SLUGS))
     wanted = {c: CITY_SLUGS[c] for c in by_city if c in CITY_SLUGS}
     fetched = fetch_cities(sorted(wanted.values()))
+    # Частичная выдача (анти-бот отбил половину городов или кончился бюджет
+    # прогона) перезаписала бы файл обрезанным набором — у части отделений
+    # конкуренты просто исчезли бы с карты, и заметить это в UI нечем.
+    if len(fetched) < len(wanted) * 2 // 3:
+        raise RuntimeError(f"городов с данными {len(fetched)} из {len(wanted)} — "
+                           f"файл не трогаем, ждём следующего прогона")
 
     out = []
     for city, branches in sorted(by_city.items()):

@@ -122,12 +122,30 @@ def office_rates_by_bank():
     Если у банка во всех офисах Москвы курс совпадает — берём его вместо городского
     из mainfin: это фактические данные, а не оценка. Заодно избавляет от ситуации,
     когда рядом две точки одного банка показывают разные цифры из разных источников."""
-    from collect_competitors import cached_offices
+    from collect_competitors import alert, cached_offices, recent_failure
     offices, age = cached_offices()
     if offices:   # их только что принёс collect_competitors в этом же прогоне
         log(f"  banki.ru: {len(offices)} офисов из кэша ({age:.0f}s назад)")
     else:
-        offices = remote("remote_fetch_banki.py")["offices"]
+        # banki.ru здесь только УТОЧНЯЕТ городской курс mainfin. Раньше его сбой
+        # ронял весь сборщик, и уже собранные свежие данные mainfin улетали в
+        # корзину вместе с ним — карта стояла до следующего прогона. Теперь
+        # уточнение просто пропускаем: курсы остаются городскими, в UI они и так
+        # помечены звёздочкой и подписью «курс по городу».
+        fail_age, fail_err = recent_failure()
+        if fail_age is not None:
+            log(f"  banki.ru не ответил {fail_age / 60:.0f} мин назад ({fail_err}) — "
+                f"второй раз не ходим, курсы останутся городскими")
+            return {}
+        try:
+            offices = remote("remote_fetch_banki.py")["offices"]
+        except Exception as e:
+            log(f"  banki.ru недоступен ({type(e).__name__}: {e}) — "
+                f"курсы останутся городскими")
+            if "--dry-run" not in sys.argv:   # прогон руками в топик не пишет
+                alert("Unistream map: banki.ru не ответил, курсы банков в этом прогоне "
+                      f"только по городу (mainfin).\n{type(e).__name__}: {e}")
+            return {}
     grouped = {}
     for o in offices:
         for cur, r in o["rates"].items():

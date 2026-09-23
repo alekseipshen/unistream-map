@@ -9,12 +9,25 @@
 """
 import http.cookiejar
 import json
+import os
 import random
 import re
 import sys
 import time
 import urllib.error
 import urllib.request
+
+# Потолок на весь прогон (см. remote.py). Прогон по области — 15 городов, у каждого
+# своя лестница повторов, и в худшем случае они втрое перекрывали ssh-таймаут:
+# 03.09 и 12.09 заход по области так и падал — ssh убивали, данных ноль.
+# Теперь город, на который времени не осталось, просто пропускается.
+DEADLINE = max(60.0, float(os.environ.get("UNISTREAM_DEADLINE", 555)) - 25)
+START = time.monotonic()
+REQ_TIMEOUT = 30
+
+
+def left():
+    return DEADLINE - (time.monotonic() - START)
 
 # Можно передать несколько городов через запятую — тогда один ssh-заход вместо
 # пятнадцати. RuVDS с 2 ядрами и 4 ГБ болезненно относится к пачке сессий.
@@ -51,16 +64,18 @@ def fetch(url=None):
     opener = urllib.request.build_opener(NoRedirect,
                                          urllib.request.HTTPCookieProcessor(jar))
     for i, pause in enumerate(BACKOFF + (None,)):
+        if left() < REQ_TIMEOUT:
+            raise TimeoutError(f"бюджет прогона исчерпан ({url})")
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with opener.open(req, timeout=60) as r:
+            with opener.open(req, timeout=REQ_TIMEOUT) as r:
                 return r.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as e:   # подкласс URLError — ловим первым
-            if pause is None or e.code not in RETRY_STATUS:
+            if pause is None or e.code not in RETRY_STATUS or left() < pause + REQ_TIMEOUT:
                 raise
             print(f"retry {i + 1} через {pause}s: HTTP {e.code}", file=sys.stderr)
         except (urllib.error.URLError, TimeoutError) as e:
-            if pause is None:
+            if pause is None or left() < pause + REQ_TIMEOUT:
                 raise
             print(f"retry {i + 1} через {pause}s: {e}", file=sys.stderr)
         time.sleep(pause + random.uniform(0, 3))
@@ -127,8 +142,11 @@ def main():
         json.dump({"banks": banks, "offices": offices}, sys.stdout, ensure_ascii=False)
         return
     # несколько городов за один заход: по городу — свой блок в ответе
-    out = {}
+    out, skipped = {}, []
     for city in CITIES:
+        if left() < REQ_TIMEOUT:
+            skipped.append(city)
+            continue
         try:
             html = fetch(f"https://mainfin.ru/currency/{city}")
         except Exception as e:
@@ -138,6 +156,8 @@ def main():
         out[city] = {"banks": banks, "offices": offices}
         print(f"{city}: банков {len(banks)}, отделений {len(offices)}", file=sys.stderr)
         time.sleep(2)
+    if skipped:
+        print(f"не хватило времени на города: {', '.join(skipped)}", file=sys.stderr)
     json.dump({"cities": out}, sys.stdout, ensure_ascii=False)
 
 

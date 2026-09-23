@@ -28,6 +28,12 @@ OUR_BANK_MARKERS = ("юнистрим", "unistream")
 # соединение. Сборщики идут друг за другом за секунды, данные заведомо те же.
 CACHE = HERE / "state" / "banki_offices.json"
 CACHE_TTL = 900
+# Зеркальная история: если banki.ru не ответил нам, второму сборщику через
+# полминуты он тоже не ответит. Раньше тот честно шёл следом и зависал ещё на
+# таймаут — прогон растягивался вдвое, а источник получал вторую пачку запросов
+# ровно тогда, когда уже отбивался от первой.
+FAIL_MARK = HERE / "state" / "banki_failed.json"
+FAIL_TTL = 600
 
 
 def log(msg):
@@ -64,10 +70,31 @@ def cached_offices(max_age=CACHE_TTL):
     return None, None
 
 
+def recent_failure(max_age=FAIL_TTL):
+    """Сколько секунд назад banki.ru уже не ответил в этом прогоне, или None."""
+    try:
+        age = time.time() - FAIL_MARK.stat().st_mtime
+        if age <= max_age:
+            return age, json.loads(FAIL_MARK.read_text()).get("err", "")
+    except (OSError, ValueError):
+        pass
+    return None, None
+
+
 def fetch_offices():
     """Запускает remote_fetch_banki.py на RuVDS, возвращает список офисов."""
     import remote as ssh   # общий помощник: длинный ConnectTimeout + повторы
-    offices = ssh.run("remote_fetch_banki.py", timeout=600, log=log)["offices"]
+    try:
+        offices = ssh.run("remote_fetch_banki.py", timeout=600, log=log)["offices"]
+    except Exception as e:
+        try:
+            FAIL_MARK.parent.mkdir(parents=True, exist_ok=True)
+            FAIL_MARK.write_text(json.dumps({"err": f"{type(e).__name__}: {e}"},
+                                            ensure_ascii=False))
+        except OSError:
+            pass
+        raise
+    FAIL_MARK.unlink(missing_ok=True)
     try:
         CACHE.parent.mkdir(parents=True, exist_ok=True)
         CACHE.write_text(json.dumps({"offices": offices}, ensure_ascii=False))
