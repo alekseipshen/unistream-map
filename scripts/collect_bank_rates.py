@@ -13,7 +13,7 @@ import math
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -22,6 +22,15 @@ ROOT = HERE.parent
 SSH_HOST = "ruvds"
 RADIUS_M = 1000
 OUR_BANK_MARKERS = ("юнистрим", "unistream")
+MSK = timezone(timedelta(hours=3))
+
+# Алерт только со второго упавшего прогона подряд. Разовые сбои mainfin (502 Bad
+# Gateway и таймауты у них на бэкенде, 24.09, 26.09, 08.11) лечились сами к
+# следующему прогону через 30 мин, а каждый такой алерт заставлял разбираться
+# вручную. Сайт при этом не ломается: остаются курсы прошлого прогона. Два подряд
+# = курсы по городу стоят больше часа, это уже стоит внимания.
+FAIL_STREAK = HERE / "state" / "bank_rates_failures.json"
+ALERT_AFTER = 2
 
 # Ключи — уже нормализованные имена из OSM, значения — нормализованные имена в источнике.
 # Нужны там, где названия расходятся сильнее, чем справляется norm().
@@ -239,15 +248,56 @@ def main():
     subprocess.run([sys.executable, str(HERE / "publish.py")])
 
 
+def _load_streak():
+    try:
+        return json.loads(FAIL_STREAK.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def note_failure(e):
+    """Считает упавшие прогоны подряд; алерт уходит с ALERT_AFTER-го."""
+    from collect_competitors import alert
+    s = _load_streak()
+    s["count"] = s.get("count", 0) + 1
+    s.setdefault("since", datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    if s["count"] >= ALERT_AFTER:
+        since = datetime.fromisoformat(s["since"]).astimezone(MSK).strftime("%d.%m %H:%M")
+        # без «(mainfin)» в тексте: сборщик ходит и в mainfin, и в banki.ru,
+        # а подпись врала про источник — источник виден из самой ошибки
+        alert(f"Unistream map: сборщик курсов банков упал {s['count']}-й прогон подряд "
+              f"(первый сбой {since} МСК), курсы по городу на карте не обновляются.\n"
+              f"{type(e).__name__}: {e}")
+        s["alerted"] = True
+    else:
+        log(f"  сбой {s['count']} из {ALERT_AFTER} подряд — алерт только со следующего, "
+            f"на карте остаются курсы прошлого прогона")
+    FAIL_STREAK.parent.mkdir(parents=True, exist_ok=True)
+    FAIL_STREAK.write_text(json.dumps(s, ensure_ascii=False))
+
+
+def note_success():
+    """Сбрасывает счётчик; если про сбой уже писали в топик — пишет, что ожило."""
+    s = _load_streak()
+    if not s:
+        return
+    if s.get("alerted"):
+        from collect_competitors import alert
+        since = datetime.fromisoformat(s["since"]).astimezone(MSK).strftime("%d.%m %H:%M")
+        alert(f"Unistream map: курсы банков снова обновляются "
+              f"(упавших прогонов подряд было {s['count']}, с {since} МСК).")
+    log(f"  восстановился после {s['count']} упавших прогонов подряд")
+    FAIL_STREAK.unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
+    dry = "--dry-run" in sys.argv   # прогон руками счётчик сбоев не трогает
     try:
         main()
     except Exception as e:
         log(f"ОШИБКА: {e}")
-        if "--dry-run" not in sys.argv:
-            sys.path.insert(0, str(HERE))
-            from collect_competitors import alert
-            # без «(mainfin)» в тексте: сборщик ходит и в mainfin, и в banki.ru,
-            # а подпись врала про источник — источник теперь виден из самой ошибки
-            alert(f"Unistream map: сборщик курсов банков упал.\n{type(e).__name__}: {e}")
+        if not dry:
+            note_failure(e)
         sys.exit(1)
+    if not dry:
+        note_success()
