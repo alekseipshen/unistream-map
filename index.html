@@ -772,7 +772,7 @@ function competitorsBlock(b) {
    обновляется при смене цифр и пульсом раз в ~25 мин). Наш курс — живой, из API Юнистрима.
    var, а не let/const: card() может сработать до этой строки (TDZ, см. README). */
 var RBC = null;
-var RBC_LATE_MIN = 20;   // столько ждём, пока скрипт/Игорь перенесут новый курс на РБК
+var RBC_LATE_MIN = 35;   // ждём переноса на РБК; отсчёт от lastUpdated, а API показывает курс с опозданием ~15 мин
 
 async function loadRbc() {
   try {

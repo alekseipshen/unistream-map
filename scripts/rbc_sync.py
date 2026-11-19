@@ -283,7 +283,11 @@ def sync_branch(cab, num, rbc_id, our, state):
     left = desired_rows(after["rows"], our, allowed)[1]
     ok = after["running"] and not left
     st["last_write"] = now_iso()
-    st["cab_fp"], st["cab_changed_at"] = _fp(after["rows"]), st["last_write"]
+    # «правка пакета» = момент курса, который мы перенесли, а не время записи: API Юнистрима
+    # показывает новый курс с опозданием ~15 мин (19.11: поставлен в 14:18, в API к 14:33),
+    # и курс, поставленный за минуту до нашей записи, иначе считался бы «старше РБК»
+    written_at = max(datetime.fromisoformat(our[c]["lastUpdated"]) for c in allowed if our[c].get("lastUpdated"))
+    st["cab_fp"], st["cab_changed_at"] = _fp(after["rows"]), written_at.astimezone(timezone.utc).isoformat(timespec="seconds")
     st["last_result"] = ("ok: " if ok else "не сошлось: ") + "; ".join(changes)
     info.update(last_write=st["last_write"], last_result=st["last_result"],
                 running=after["running"], stop_time=r.get("time"), in_sync=ok, pending=left)
