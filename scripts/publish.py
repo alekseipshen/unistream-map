@@ -8,6 +8,7 @@
 Файлы, где изменилась лишь строка с временем генерации, откатываются: незачем
 гонять пересборку сайта, если курсы те же.
 """
+import fcntl
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +23,11 @@ def git(*args, check=False):
                           capture_output=True, text=True, check=check)
 
 
-def main():
+def main(message="Auto: refresh rates"):
+    # публикуют двое: прогон сборщиков (раз в 30 мин) и rbc_sync.py (раз в 5 мин) —
+    # без замка их git add/commit/push могут переплестись
+    lock = open(ROOT / "scripts" / "state" / "publish.lock", "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
     changed = [l[3:].strip().strip('"') for l in
                git("status", "--porcelain", "--", DATA).stdout.splitlines()]
     if not changed:
@@ -49,7 +54,7 @@ def main():
 
     git("add", *meaningful)
     git("-c", "user.name=Alex Pshenichnikov", "-c", "user.email=al.pshen@gmail.com",
-        "commit", "-q", "-m", "Auto: refresh rates")
+        "commit", "-q", "-m", message)
     p = git("push", "-q")
     if p.returncode != 0:
         print(f"push не прошёл: {p.stderr[:200]}", file=sys.stderr)

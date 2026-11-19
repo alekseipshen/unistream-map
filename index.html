@@ -136,6 +136,15 @@
   table.comp-tbl td.worse { color: var(--closed); font-weight: 700; }
   .comp-name { font-weight: 600; }
   .comp-addr { color: var(--muted); font-size: 12.5px; }
+  .fee { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .fee-note { color: #b26a00; font-size: 12.5px; margin: 2px 0; }
+  .rbc { font-size: 13px; margin: 6px 0 2px; padding: 5px 8px; border-radius: 6px; }
+  .rbc-ok { background: #eaf6ec; color: #1e6b33; }
+  .rbc-wait { background: #f1f3f6; color: var(--muted); }
+  .rbc-bad { background: #fdecea; color: #a1261b; font-weight: 600; }
+  .rbc-warn { background: #fff4e0; color: #8a5300; }
+  .rbc a { color: inherit; text-decoration: underline; }
+  .rbc .rbc-sub { font-weight: 400; font-size: 12px; display: block; margin-top: 2px; }
   .comp-item { margin-top: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
   .comp-item:hover { background: #eef3ff; }
   .comp-show { color: var(--blue); font-weight: 600; opacity: 0; }
@@ -248,6 +257,42 @@ function parseAt(s) {
   return isNaN(d) ? null : d;
 }
 
+/* Скрытые комиссии конкурентов (сообщил Игорь 19.11.2026). На табло у них один курс,
+   а клиент платит больше — сравниваем с нами по фактической цене продажи.
+   Всё через function: слой конкурентов на карте строится выше остальных const (TDZ). */
+function bankFee(bank) {
+  const k = (bank || "").toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/g, "");
+  if (k.includes("трансстрой"))
+    return { sell: { USD: 1 }, note: "+1 ₽ к курсу продажи USD за подбор долларов нового образца" };
+  if (k.includes("камком"))
+    return { sell: { USD: 1.9, EUR: 1.9, GBP: 1.9, CHF: 1.9 }, opFee: 200,
+               note: "+1,9 ₽ к курсу продажи USD/EUR/GBP/CHF и 200 ₽ комиссия за любую операцию" };
+  return null;
+}
+/** Копия курсов с надбавкой к продаже; исходный курс табло остаётся в rawSell. */
+function withFees(bank, rates) {
+  const f = bankFee(bank);
+  if (!f || !rates) return rates;
+  const out = {};
+  for (const cur in rates) {
+    const r = rates[cur];
+    const add = f.sellAll || (f.sell && f.sell[cur]) || 0;
+    out[cur] = add && r.sell
+      ? { ...r, sell: Math.round((r.sell + add) * 100) / 100, rawSell: r.sell, sellAdd: add }
+      : r;
+  }
+  return out;
+}
+function sellText(t) {
+  return t.rawSell
+    ? `${fmtRate(t.sell)} <span class="fee" title="на табло ${fmtRate(t.rawSell)}, скрытая надбавка ${fmtRate(t.sellAdd)} ₽">(табло ${fmtRate(t.rawSell)} + ${fmtRate(t.sellAdd)})</span>`
+    : fmtRate(t.sell);
+}
+function feeNote(bank) {
+  const f = bankFee(bank);
+  return f ? `<div class="fee-note">Скрытая комиссия: ${f.note}</div>` : "";
+}
+
 /** Насколько свежий курс: подпись + признак «пора не доверять». */
 function freshness(at) {
   const d = parseAt(at);
@@ -317,17 +362,17 @@ function renderCompMarkers() {
   const points = [];
   for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
     points.push({ bank: c.bank, addr: c.address || c.name, lat: c.lat, lon: c.lon,
-                  rates: c.rates, near: c.near[0], precision: "office", at: c.at });
+                  rates: withFees(c.bank, c.rates), near: c.near[0], precision: "office", at: c.at });
   }
   for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
                    ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])]) {
     points.push({ bank: o.bank, addr: o.address, lat: o.lat, lon: o.lon,
-                  rates: o.rates, near: o.near[0], precision: "office", at: o.at });
+                  rates: withFees(o.bank, o.rates), near: o.near[0], precision: "office", at: o.at });
   }
   for (const p of (typeof POI !== "undefined" ? POI : [])) {
     const r = poiRates(p);
     if (r) points.push({ bank: r.name, addr: p.addr, lat: p.lat, lon: p.lon,
-                         rates: r.rates, near: p.near[0], at: r.at,
+                         rates: withFees(r.name, r.rates), near: p.near[0], at: r.at,
                          precision: r.same ? "uniform" : "city" });
   }
   for (const pt of points) {
@@ -340,11 +385,11 @@ function renderCompMarkers() {
               style="width:${size}px;height:${size}px"></div>`
     });
     const curs = Object.keys(pt.rates).sort()
-      .map(k => `${k} ${fmtRate(pt.rates[k].buy)} / ${fmtRate(pt.rates[k].sell)}`).join("<br>");
+      .map(k => `${k} ${fmtRate(pt.rates[k].buy)} / ${sellText(pt.rates[k])}`).join("<br>");
     L.marker([pt.lat, pt.lon], { icon })
       .bindPopup(`<b>${pt.bank}</b>${pt.addr ? "<br>" + pt.addr : ""}<br>
         <span style="color:#67707f">${pt.near.d} м до нашего №${pt.near.num}${beats ? " · курс лучше нашего" : ""}</span><br>
-        <div style="margin-top:4px">${curs}</div>
+        <div style="margin-top:4px">${curs}</div>${feeNote(pt.bank)}
         <div style="margin-top:3px" class="${freshness(pt.at).stale ? "stale" : ""}"
              ${freshness(pt.at).stale ? "" : 'style="color:#67707f;margin-top:3px"'}>${freshness(pt.at).text}</div>
         ${pt.precision === "city" ? `<div style="color:#67707f">курс банка по Москве</div>` : ""}`)
@@ -538,7 +583,7 @@ const NORATE_BY_BRANCH = {}; // точки рядом, по которым ку�
 
 for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
   for (const n of c.near) (COMP_BY_BRANCH[n.num] ||= []).push({
-    c: { bank: c.bank, address: c.address || c.name, rates: c.rates, precision: "office",
+    c: { bank: c.bank, address: c.address || c.name, rates: withFees(c.bank, c.rates), precision: "office",
          lat: c.lat, lon: c.lon, at: c.at },
     d: n.d,
   });
@@ -547,7 +592,7 @@ for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : [])) {
 for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
                  ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])]) {
   for (const n of o.near) (COMP_BY_BRANCH[n.num] ||= []).push({
-    c: { bank: o.bank, address: o.address, rates: o.rates, precision: "office",
+    c: { bank: o.bank, address: o.address, rates: withFees(o.bank, o.rates), precision: "office",
          lat: o.lat, lon: o.lon, at: o.at },
     d: n.d,
   });
@@ -558,7 +603,7 @@ for (const p of (typeof POI !== "undefined" ? POI : [])) {
     if (r) {
       // same = во всех отделениях банка курс совпадает (проверено по офисным данным banki.ru)
       (COMP_BY_BRANCH[n.num] ||= []).push({
-        c: { bank: r.name, address: p.addr || "", rates: r.rates, at: r.at,
+        c: { bank: r.name, address: p.addr || "", rates: withFees(r.name, r.rates), at: r.at,
              lat: p.lat, lon: p.lon, precision: r.same ? "uniform" : "city" },
         d: n.d,
       });
@@ -614,7 +659,7 @@ function compRatesTable(b, c) {
     const sellWorse = our && t.sell && t.sell < our.sell;
     return `<tr><td>${cur}</td>
       <td class="${buyWorse ? "worse" : ""}">${t.buy ? fmtRate(t.buy) : "—"}</td>
-      <td class="${sellWorse ? "worse" : ""}">${t.sell ? fmtRate(t.sell) : "—"}</td>
+      <td class="${sellWorse ? "worse" : ""}">${t.sell ? sellText(t) : "—"}</td>
       <td>${our ? fmtRate(our.buy) + " / " + fmtRate(our.sell) : "нет"}</td></tr>`;
   }).join("");
   return `<table class="comp-tbl">
@@ -645,7 +690,7 @@ function arbitrageWarnings(b) {
     for (const { c, d } of list) {
       const t = c.rates[our.cur];
       if (t && t.sell && t.sell < our.buy && (!best || t.sell < best.sell))
-        best = { sell: t.sell, bank: c.bank, d, city: c.precision === "city" };
+        best = { sell: t.sell, bank: c.bank, d, city: c.precision === "city", fee: !!t.rawSell };
     }
     if (best) out.push({ cur: our.cur, our: our.buy, ...best, diff: our.buy - best.sell });
   }
@@ -680,12 +725,12 @@ function competitorsBlock(b) {
       const t = c.rates[our.cur];
       if (!t) continue;
       if (t.buy && (!bb || t.buy > bb.v)) bb = { v: t.buy, bank: c.bank, d, city: c.precision === "city" };
-      if (t.sell && (!bs || t.sell < bs.v)) bs = { v: t.sell, bank: c.bank, d, city: c.precision === "city" };
+      if (t.sell && (!bs || t.sell < bs.v)) bs = { v: t.sell, bank: c.bank, d, city: c.precision === "city", fee: !!t.rawSell };
     }
     if (!bb && !bs) return "";
     const buyWorse = bb && bb.v > our.buy, sellWorse = bs && bs.v < our.sell;
     const cell = (x, worse) => x
-      ? `<span class="${worse ? "comp-warn" : ""}">${fmtRate(x.v)}</span><span class="comp-addr"> ${x.bank}${x.city ? "*" : ""}, ${x.d} м</span>`
+      ? `<span class="${worse ? "comp-warn" : ""}">${fmtRate(x.v)}</span>${x.fee ? `<span class="fee"> с комиссией</span>` : ""}<span class="comp-addr"> ${x.bank}${x.city ? "*" : ""}, ${x.d} м</span>`
       : "—";
     return `<tr><td>${our.cur}</td><td>${fmtRate(our.buy)} / ${fmtRate(our.sell)}</td>
       <td>${cell(bb, buyWorse)}</td><td>${cell(bs, sellWorse)}</td></tr>`;
@@ -702,14 +747,14 @@ function competitorsBlock(b) {
         : c.precision === "uniform"
           ? ` <span class="comp-addr">курс одинаковый во всех отделениях</span>` : ""}</div>
       <div class="comp-addr">${c.address || "адрес уточняется"} <span class="comp-show">показать на карте</span></div>
-      ${compRatesTable(b, c)}</div>`).join("");
+      ${feeNote(c.bank)}${compRatesTable(b, c)}</div>`).join("");
   const hasCity = list.some(x => x.c.precision === "city");
 
   return `<div class="comp-block">
     ${arb.length ? `<div class="arb">
       <b>Мы покупаем дороже, чем сосед продаёт</b>
       ${arb.map(a => `<div>${a.cur}: у нас покупка <b>${fmtRate(a.our)}</b> — ${a.bank}${a.city ? "*" : ""}
-        продаёт по <b>${fmtRate(a.sell)}</b> (${a.d} м). Разница ${fmtRate(a.diff)} ₽ на единицу.</div>`).join("")}
+        продаёт по <b>${fmtRate(a.sell)}</b>${a.fee ? " с учётом скрытой комиссии" : ""} (${a.d} м). Разница ${fmtRate(a.diff)} ₽ на единицу.</div>`).join("")}
       <div class="arb-note">Валюту могут купить у соседа и сдать нам — на этом теряем мы. Стоит проверить наш курс.</div>
     </div>` : ""}
     <div class="comp-head">Конкуренты в 1 км: ${list.length} с курсами${pois.length ? ` · ещё ${pois.length} точек без публикуемых курсов` : ""}
@@ -720,6 +765,60 @@ function competitorsBlock(b) {
       <div class="rates-note">Источники: banki.ru (курс офиса) и mainfin.ru (курс банка по городу), обновляются автоматически${typeof COMPETITORS_AT !== "undefined" ? ` · ${new Date(COMPETITORS_AT).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : ""}</div>
       </details>` : ""}
   </div>`;
+}
+
+/* ---------- сверка с РБК ----------
+   Снимок публичных карточек cash.rbc.ru пишет scripts/rbc_sync.py (раз в 5 мин, файл
+   обновляется при смене цифр и пульсом раз в ~25 мин). Наш курс — живой, из API Юнистрима.
+   var, а не let/const: card() может сработать до этой строки (TDZ, см. README). */
+var RBC = null;
+var RBC_LATE_MIN = 20;   // столько ждём, пока скрипт/Игорь перенесут новый курс на РБК
+
+async function loadRbc() {
+  try {
+    const r = await fetch(`data/rbc_status.json?t=${Date.now()}`, { cache: "no-store" });
+    if (r.ok) RBC = await r.json();
+  } catch (e) { /* нет файла — блок просто не показываем */ }
+}
+
+function rbcBlock(b) {
+  if (!RBC || b.duty || !RBC.branches) return "";
+  const hm = d => d.toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" });
+  const age = m => m < 60 ? `${Math.round(m)} мин` : `${Math.floor(m / 60)} ч ${Math.round(m % 60)} мин`;
+  const link = `<a href="https://cash.rbc.ru/cash/private/cabinet" target="_blank" rel="noopener" onclick="event.stopPropagation()">кабинет РБК</a>`;
+  const s = RBC.branches[b.num];
+  if (!s) return `<div class="rbc rbc-wait">РБК: этого отделения нет в кабинете РБК</div>`;
+  const auto = RBC.sync && RBC.sync[b.num];
+  const autoTxt = auto ? " · обновляется автоматически" : "";
+  const hb = new Date(RBC.heartbeat);
+  const mskH = Number(new Date().toLocaleString("en-GB", { timeZone: "Europe/Moscow", hour: "2-digit", hour12: false }));
+  if ((Date.now() - hb) / 60000 > 45 && mskH >= 7 && mskH < 23)
+    return `<div class="rbc rbc-warn">Проверка РБК не работает с ${hm(hb)}: сверь курсы вручную в ${link}</div>`;
+  if (s.error) return `<div class="rbc rbc-warn">РБК: не удалось проверить карточку отделения. Сверь вручную в ${link}</div>`;
+  if (auto && auto.error)
+    return `<div class="rbc rbc-warn">Автообновление РБК дало сбой: проверь курсы в ${link}<span class="rbc-sub">${auto.error}</span></div>`;
+  if (!b.live || !b.rates) return "";          // ждём живых курсов, по сохранённым не судим
+  const q = s.q || {};
+  if (!Object.keys(q).length)
+    return `<div class="rbc rbc-warn">На РБК сейчас нет курсов этого отделения (пакет остановлен?): ${link}</div>`;
+  const diffs = b.rates.filter(r => q[r.cur] &&
+    (Math.abs(q[r.cur][0] - r.buy) > 0.001 || Math.abs(q[r.cur][1] - r.sell) > 0.001));
+  const missing = b.rates.filter(r => !q[r.cur]).map(r => r.cur);
+  const missTxt = missing.length ? `<span class="rbc-sub">На РБК не выставлены: ${missing.join(", ")}</span>` : "";
+  if (!diffs.length)
+    return `<div class="rbc rbc-ok">РБК ✓ курсы совпадают${autoTxt}<span class="rbc-sub">сверка каждые 5 минут</span>${missTxt}</div>`;
+  const list = diffs.map(r => `${r.cur}: на РБК ${fmtRate(q[r.cur][0])} / ${fmtRate(q[r.cur][1])}, у нас ${fmtRate(r.buy)} / ${fmtRate(r.sell)}`).join("<br>");
+  const newest = Math.max(...diffs.map(r => +new Date(r.at) || 0));
+  const rbcAtIso = s.changed_at || (auto && auto.manual && auto.cab_changed_at);
+  const rbcAt = rbcAtIso ? +new Date(rbcAtIso) : 0;
+  // РБК поменяли позже, чем курс на сайте (так было 19.11 в 14:28): кто прав — решает Игорь,
+  // скрипт такой курс не перезаписывает
+  if (rbcAt && rbcAt > newest)
+    return `<div class="rbc rbc-warn">На РБК курс поменяли в ${hm(new Date(rbcAt))}, позже, чем на сайте Юнистрима (${hm(new Date(newest))}). Проверь, какой верный: сайт или ${link}<span class="rbc-sub">${list}</span></div>`;
+  const lateMin = (Date.now() - newest) / 60000;
+  if (lateMin < RBC_LATE_MIN)
+    return `<div class="rbc rbc-wait">РБК: ждём обновления${auto ? ", скрипт перенесёт сам" : ""}<span class="rbc-sub">${list}</span></div>`;
+  return `<div class="rbc rbc-bad">РБК и сайт расходятся уже ${age(lateMin)}: проверь и поправь в ${link}<span class="rbc-sub">${list}</span>${missTxt}</div>`;
 }
 
 function card(b) {
@@ -738,6 +837,7 @@ function card(b) {
     <div class="kv">График: <b>${hoursText(b)}</b>${b.hoursNotes ? ` · перерыв: ${b.hoursNotes.replace(/^перерыв[а-яё]*\s*:?\s*/i, "").replace(/\n/g, ", ")}` : ""}</div>
     ${b.notes ? `<details class="howto" onclick="event.stopPropagation()"><summary>Как найти</summary><p>${b.notes}</p></details>` : ""}
     ${ratesTable(b)}
+    ${rbcBlock(b)}
     ${competitorsBlock(b)}
     <div class="actions">
       <a href="${route}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${station ? "Маршрут от метро в Яндекс Картах" : "Открыть в Яндекс Картах"}</a>
@@ -777,11 +877,12 @@ async function refreshRates(only) {
         const d = await r.json();
         b.rates = (d.exchangeRates || []).map(x => ({ cur: x.currency, buy: x.buyRate, sell: x.sellRate, at: x.lastUpdated }));
         b.currencies = d.currencies || b.currencies;
+        b.live = true;
         ok++;
       } catch (e) { /* отделение оставим на сохранённых курсах */ }
     }
   }
-  await Promise.all(Array.from({ length: 8 }, worker));
+  await Promise.all([...Array.from({ length: 8 }, worker), loadRbc()]);
   const total = targets.length;
   const t = new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" });
   ratesFetchedAt = t;
@@ -793,6 +894,8 @@ async function refreshRates(only) {
 }
 document.getElementById("refreshBtn").addEventListener("click", refreshRates);
 setInterval(refreshRates, 10 * 60 * 1000);
+// снимок РБК чаще курсов: он лёгкий, а «РБК отстал» хочется видеть без перезагрузки
+setInterval(() => loadRbc().then(renderPanel), 5 * 60 * 1000);
 
 uiReady = true;
 render();

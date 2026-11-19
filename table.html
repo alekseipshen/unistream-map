@@ -133,21 +133,47 @@ function poiRates(p) {
   const m = typeof POI_BANK !== "undefined" ? POI_BANK : {};
   return m[p.n] && r[m[p.n]] ? r[m[p.n]] : null;
 }
+/* Скрытые комиссии конкурентов (сообщил Игорь 19.11.2026) — то же правило, что в index.html. */
+function bankFee(bank) {
+  const k = (bank || "").toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/g, "");
+  if (k.includes("трансстрой"))
+    return { sell: { USD: 1 }, note: "+1 ₽ к курсу продажи USD за подбор долларов нового образца" };
+  if (k.includes("камком"))
+    return { sell: { USD: 1.9, EUR: 1.9, GBP: 1.9, CHF: 1.9 }, opFee: 200,
+               note: "+1,9 ₽ к курсу продажи USD/EUR/GBP/CHF и 200 ₽ комиссия за любую операцию" };
+  return null;
+}
+function withFees(bank, rates) {
+  const f = bankFee(bank);
+  if (!f || !rates) return rates;
+  const out = {};
+  for (const cur in rates) {
+    const r = rates[cur];
+    const add = f.sellAll || (f.sell && f.sell[cur]) || 0;
+    out[cur] = add && r.sell
+      ? { ...r, sell: Math.round((r.sell + add) * 100) / 100, rawSell: r.sell, sellAdd: add }
+      : r;
+  }
+  return out;
+}
+const sellTxt = r => r.rawSell
+  ? `${fmt(r.sell)} <span class="muted" title="на табло ${fmt(r.rawSell)}, скрытая надбавка ${fmt(r.sellAdd)} ₽">(табло ${fmt(r.rawSell)} + ${fmt(r.sellAdd)})</span>`
+  : fmt(r.sell);
 const RIVALS = {}, NORATE = {};
 for (const c of (typeof COMPETITORS !== "undefined" ? COMPETITORS : []))
   for (const n of c.near) (RIVALS[n.num] ||= []).push({
-    bank: c.bank, addr: c.address || c.name, d: n.d, rates: c.rates,
+    bank: c.bank, addr: c.address || c.name, d: n.d, rates: withFees(c.bank, c.rates),
     kind: "курс отделения", at: c.at, lat: c.lat, lon: c.lon });
 for (const o of [...(typeof OFFICES_MF !== "undefined" ? OFFICES_MF : []),
                  ...(typeof COMPETITORS_OBLAST !== "undefined" ? COMPETITORS_OBLAST : [])])
   for (const n of o.near) (RIVALS[n.num] ||= []).push({
-    bank: o.bank, addr: o.address, d: n.d, rates: o.rates,
+    bank: o.bank, addr: o.address, d: n.d, rates: withFees(o.bank, o.rates),
     kind: "курс отделения", at: o.at, lat: o.lat, lon: o.lon });
 for (const p of (typeof POI !== "undefined" ? POI : [])) {
   const r = poiRates(p);
   for (const n of p.near) {
     if (r) (RIVALS[n.num] ||= []).push({
-      bank: r.name, addr: p.addr || "", d: n.d, rates: r.rates,
+      bank: r.name, addr: p.addr || "", d: n.d, rates: withFees(r.name, r.rates),
       kind: r.same ? "курс банка" : "курс банка по городу",
       at: r.at, lat: p.lat, lon: p.lon });
     else NORATE[n.num] = (NORATE[n.num] || 0) + 1;
@@ -222,7 +248,7 @@ function rivalsFor(num) {
     .filter(r => r.rates[cur])
     .map(r => {
       const t = r.rates[cur];
-      return { ...r, buy: t.buy, sell: t.sell,
+      return { ...r, buy: t.buy, sell: t.sell, rawSell: t.rawSell, sellAdd: t.sellAdd,
         buyBetter: our && t.buy && t.buy > our.buy,
         sellBetter: our && t.sell && t.sell < our.sell };
     })
@@ -249,7 +275,7 @@ function render() {
     let note = "", noteCls = "";
     if (!our) { note = `${cur} в отделении не меняют`; }
     else if (bs && bs.sell < our.buy) {
-      note = `сосед продаёт по ${fmt(bs.sell)} — дешевле, чем мы покупаем (${fmt(our.buy)})`;
+      note = `сосед продаёт по ${fmt(bs.sell)}${bs.rawSell ? " с учётом скрытой комиссии" : ""} — дешевле, чем мы покупаем (${fmt(our.buy)})`;
       noteCls = "bad";
     } else if (!better) { note = "наш курс не хуже соседей"; noteCls = "good"; }
     else { note = `у ${better} из ${list.length} курс выгоднее для клиента`; }
@@ -266,7 +292,7 @@ function render() {
       <td>${our ? fmt(our.buy) : "—"}</td>
       <td>${our ? fmt(our.sell) : "—"}</td>
       <td class="${bb && our && bb.buy > our.buy ? "bad" : "good"}">${bb ? `${fmt(bb.buy)} <span class="muted">${bb.bank}</span>` : "—"}</td>
-      <td class="${bs && our && bs.sell < our.sell ? "bad" : "good"}">${bs ? `${fmt(bs.sell)} <span class="muted">${bs.bank}</span>` : "—"}</td>
+      <td class="${bs && our && bs.sell < our.sell ? "bad" : "good"}">${bs ? `${sellTxt(bs)} <span class="muted">${bs.bank}</span>` : "—"}</td>
       <td class="l ${noteCls}">${note}</td>
     </tr>`);
 
@@ -279,13 +305,13 @@ function render() {
         if (r.buyBetter) diffs.push(`покупает дороже на ${fmt(r.buy - our.buy)}`);
         if (r.sellBetter) diffs.push(`продаёт дешевле на ${fmt(our.sell - r.sell)}`);
         rows.push(`<tr class="comp">
-          <td class="l">${r.bank}</td>
+          <td class="l">${r.bank}${bankFee(r.bank) ? `<div class="stale" style="font-size:12px">скрытая комиссия: ${bankFee(r.bank).note}</div>` : ""}</td>
           <td class="l muted">${r.addr || "—"}</td>
           <td class="l muted">${r.kind}</td>
           <td>${r.d}</td>
           <td class="${freshness(r.at).stale ? "stale" : "muted"}">${freshness(r.at).text}</td>
           <td class="${r.buyBetter ? "bad" : "good"}">${fmt(r.buy)}</td>
-          <td class="${r.sellBetter ? "bad" : "good"}">${fmt(r.sell)}</td>
+          <td class="${r.sellBetter ? "bad" : "good"}">${sellTxt(r)}</td>
           <td class="l" colspan="3">${diffs.join(", ") || "не выгоднее нашего"}</td>
         </tr>`);
       }
@@ -303,12 +329,14 @@ function render() {
 function toCSV() {
   const cur = state.cur;
   const out = [["Отделение", "Адрес отделения", "Банк рядом", "Адрес банка", "Тип данных",
-                "Метров", "Валюта", "Покупает", "Продаёт", "Наш курс покупки", "Наш курс продажи"]];
+                "Метров", "Валюта", "Покупает", "Продаёт (с комиссией)", "Продаёт на табло", "Скрытая комиссия",
+                "Наш курс покупки", "Наш курс продажи"]];
   for (const b of activeBranches()) {
     const our = OURS[b.num][cur];
     for (const r of rivalsFor(b.num))
       out.push([`№ ${b.num}`, b.address, r.bank, r.addr, r.kind, r.d, cur,
-                r.buy, r.sell, our ? our.buy : "", our ? our.sell : ""]);
+                r.buy, r.sell, r.rawSell ?? r.sell, bankFee(r.bank) ? bankFee(r.bank).note : "",
+                our ? our.buy : "", our ? our.sell : ""]);
   }
   const csv = out.map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
   const a = document.createElement("a");

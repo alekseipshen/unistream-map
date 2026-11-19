@@ -13,6 +13,7 @@
   python3 build_report.py --clean       # для руководства
 """
 import json
+import ssl
 import re
 import sys
 import time
@@ -49,10 +50,41 @@ def obj(fname, const):
     return json.loads(m.group(1)) if m else {}
 
 
+# Скрытые комиссии конкурентов (сообщил Игорь 19.11.2026) — то же правило, что на сайте:
+# сравниваем с нами по фактической цене продажи, курс табло остаётся в raw_sell.
+def bank_fee(bank):
+    k = re.sub(r"[^a-zа-я0-9]", "", (bank or "").lower().replace("ё", "е"))
+    if "трансстрой" in k:
+        return {"sell": {"USD": 1.0}, "note": "+1 ₽ к продаже USD за доллары нового образца"}
+    if "камком" in k:
+        return {"sell": {c: 1.9 for c in ("USD", "EUR", "GBP", "CHF")},
+                "note": "+1,9 ₽ к продаже USD/EUR/GBP/CHF и 200 ₽ за любую операцию"}
+    return None
+
+
+def with_fees(bank, rates):
+    f = bank_fee(bank)
+    if not f or not rates:
+        return rates
+    out = {}
+    for cur, r in rates.items():
+        add = f.get("sell_all") or f.get("sell", {}).get(cur) or 0
+        out[cur] = ({**r, "sell": round(r["sell"] + add, 2), "raw_sell": r["sell"]}
+                    if add and r.get("sell") else r)
+    return out
+
+
+def shown_bank(bank):
+    f = bank_fee(bank)
+    return f"{bank} (скрытая комиссия: {f['note']})" if f else bank
+
+
 def live_rates(branch_id):
     req = urllib.request.Request(f"https://unistream.ru/api/poses/exchange/{branch_id}",
                                  headers={"Accept-Language": "ru", "User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    # unistream.ru на сертификате Минцифры — без его цепочки TLS не проверяется
+    ctx = ssl.create_default_context(cafile=str(Path(__file__).resolve().parent / "certs" / "russian_trusted.pem"))
+    with urllib.request.urlopen(req, timeout=30, context=ctx) as r:
         d = json.load(r)
     return {x["currency"]: {"buy": x["buyRate"], "sell": x["sellRate"],
                             "at": x["lastUpdated"]} for x in d["exchangeRates"]}
@@ -70,19 +102,25 @@ def collect():
     norates = {b["num"]: 0 for b in branches}
     for c in comps:
         for n in c["near"]:
-            by_branch[n["num"]].append({"bank": c["bank"], "address": c["address"] or c["name"],
-                                        "d": n["d"], "rates": c["rates"], "kind": "офис",
+            if n["num"] not in by_branch:     # сосед дежурного отделения — в отчёте только свои 16
+                continue
+            by_branch[n["num"]].append({"bank": shown_bank(c["bank"]), "address": c["address"] or c["name"],
+                                        "d": n["d"], "rates": with_fees(c["bank"], c["rates"]), "kind": "офис",
                                         "at": (c.get("at") or "")[:16].replace("T", " ")})
     for o in mf:
         for n in o["near"]:
-            by_branch[n["num"]].append({"bank": o["bank"], "address": o["address"],
-                                        "d": n["d"], "rates": o["rates"], "kind": "офис",
+            if n["num"] not in by_branch:
+                continue
+            by_branch[n["num"]].append({"bank": shown_bank(o["bank"]), "address": o["address"],
+                                        "d": n["d"], "rates": with_fees(o["bank"], o["rates"]), "kind": "офис",
                                         "at": o.get("at") or ""})
     seen_city = {b["num"]: set() for b in branches}
     for p in poi:
         alias = poi_bank.get(p["n"])
         r = bank_rates.get(alias) if alias else None
         for n in p["near"]:
+            if n["num"] not in by_branch:
+                continue
             if not r:
                 norates[n["num"]] += 1
                 continue
@@ -91,8 +129,8 @@ def collect():
                 continue
             seen_city[n["num"]].add(key)
             by_branch[n["num"]].append({
-                "bank": r["name"], "address": p.get("addr") or "", "d": n["d"],
-                "rates": r["rates"], "at": r.get("at") or "",
+                "bank": shown_bank(r["name"]), "address": p.get("addr") or "", "d": n["d"],
+                "rates": with_fees(r["name"], r["rates"]), "at": r.get("at") or "",
                 "kind": "банк (везде одинаково)" if r.get("same") else "банк (по городу)"})
     for num in by_branch:
         by_branch[num].sort(key=lambda x: x["d"])
