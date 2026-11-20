@@ -35,7 +35,8 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import rbc  # noqa: E402
 
-SYNC = {"196"}                       # пилот; расширять после проверки
+SYNC = {"196",                       # пилот 19.11; 20.11 папа попросил ещё 11 касс
+        "023", "044", "098", "189", "198", "207", "211", "227", "253", "281", "286"}
 TIER_STEP = 0.10                     # строки «от 10 001»: на 10 коп. лучше основного курса
 MAX_JUMP = 0.08                      # больше 8% за раз — не верим, не пишем, алертим
 MIN_WRITE_GAP_S = 180                # не чаще раза в 3 мин на отделение
@@ -187,7 +188,8 @@ def desired_rows(rows, our, allowed=None):
         u = our.get(code) if code and (allowed is None or code in allowed) else None
         if u and u.get("buyRate") and u.get("sellRate"):
             buy, sell = float(u["buyRate"]), float(u["sellRate"])
-            if float(r["summa"] or 1) >= 10001:
+            # строки для крупных сумм («от 3 001» у 189/198, «от 10 001» у остальных) — на 10 коп. лучше
+            if float(r["summa"] or 1) > 1000:
                 buy, sell = round(buy + TIER_STEP, 2), round(sell - TIER_STEP, 2)
             if buy >= sell:
                 problems.append(f"{code} от {r['summa']}: покупка {buy} ≥ продажи {sell}")
@@ -197,7 +199,7 @@ def desired_rows(rows, our, allowed=None):
                     if o and abs(n - o) / o > MAX_JUMP:
                         problems.append(f"{code}: скачок {o} → {n} больше {int(MAX_JUMP * 100)}%")
                 if fmt(old_b) != fmt(buy) or fmt(old_s) != fmt(sell):
-                    changes.append(f"{code}{'' if float(r['summa'] or 1) < 10001 else ' от 10001'}: "
+                    changes.append(f"{code}{'' if float(r['summa'] or 1) <= 1000 else ' от ' + str(int(float(r['summa'])))}: "
                                    f"{fmt(old_b)}/{fmt(old_s)} → {fmt(buy)}/{fmt(sell)}")
                 r2["bid"], r2["ask"] = fmt(buy), fmt(sell)
         new.append(r2)
@@ -229,7 +231,17 @@ def sync_branch(cab, num, rbc_id, our, state):
     # ПОЗЖЕ последней правки пакета. Первый взгляд на пакет = «правили только что».
     fp = _fp(pk["rows"])
     if st.get("cab_fp") != fp:
-        st["cab_fp"], st["cab_changed_at"] = fp, now_iso()
+        changed_at = now_iso()
+        if "cab_fp" not in st and not pk["running"]:
+            # первый взгляд на остановленный пакет: правили его не позже остановки. Иначе
+            # «правили только что» не пустило бы сегодняшний курс, и утренний запуск
+            # выставил бы вчерашние цифры
+            try:
+                changed_at = (datetime.strptime(pk["stop_time"], "%d.%m.%Y %H:%M").replace(tzinfo=MSK)
+                              .astimezone(timezone.utc).isoformat(timespec="seconds"))
+            except (TypeError, ValueError):
+                pass
+        st["cab_fp"], st["cab_changed_at"] = fp, changed_at
     cab_at = datetime.fromisoformat(st["cab_changed_at"])
     info["cab_changed_at"] = st["cab_changed_at"]
     # по каждой валюте: переписываем только те, что сменились на сайте позже правки пакета
