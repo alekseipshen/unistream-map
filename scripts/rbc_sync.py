@@ -39,6 +39,7 @@ SYNC = {"196"}                       # пилот; расширять после
 TIER_STEP = 0.10                     # строки «от 10 001»: на 10 коп. лучше основного курса
 MAX_JUMP = 0.08                      # больше 8% за раз — не верим, не пишем, алертим
 MIN_WRITE_GAP_S = 180                # не чаще раза в 3 мин на отделение
+MANUAL_STOP_GRACE_S = 600            # пакет остановили руками — 10 мин не вмешиваемся
 HEARTBEAT_EVERY_S = 25 * 60          # чтобы не гонять пересборку Pages каждые 5 минут
 HISTORY = Path("/root/My-Digital-Brain/Projects/unistream-history/our_rates.csv")
 SYNC_LOG = Path("/root/My-Digital-Brain/Projects/unistream-history/rbc_sync_log.csv")
@@ -238,41 +239,74 @@ def sync_branch(cab, num, rbc_id, our, state):
     all_changes = desired_rows(pk["rows"], our)[1]
     new, changes, problems = desired_rows(pk["rows"], our, allowed)
     info["pending"] = all_changes
-    if not all_changes:
-        info["in_sync"] = True
-        return info
     if len(changes) < len(all_changes):
         info["manual"] = True
         info["note"] = "на РБК курс правили позже, чем на сайте Юнистрима: такие валюты не трогаем"
         log(f"№{num}: РБК правился позже сайта ({cab_at:%H:%M} UTC), не трогаю: "
             + "; ".join(c for c in all_changes if c not in changes))
-    if not changes:
-        return info
-    if problems:
+    if problems and changes:
         info["last_result"] = st["last_result"] = "отказ: " + "; ".join(problems)
         raise rbc.RbcError(f"№{num}: не записываю в РБК — " + "; ".join(problems))
+
     if not pk["running"]:
-        # пакет стоит = касса вне рабочих часов (РБК так и сохранить не даст); не трогаем
-        info["note"] = "пакет остановлен, ждём запуска"
+        # Вечером РБК сам останавливает пакет по режиму работы кассы, а утром его НИКТО не
+        # запускает (20.11.2026: в 10:20 у всех 15 отделений на РБК было пусто). Поэтому
+        # утром запускаем сами — но только когда на сайте уже стоит СЕГОДНЯШНИЙ курс,
+        # иначе выставили бы на день вчерашний.
+        today = datetime.now(MSK).date()
+        if not any(r.get("lastUpdated") and datetime.fromisoformat(r["lastUpdated"]).astimezone(MSK).date() == today
+                   for r in our.values()):
+            info["note"] = "пакет остановлен, сегодняшнего курса на сайте ещё нет"
+            return info
+        # пакет только что остановил человек (правит руками в кабинете) — не мешаем
+        stopped = None
+        try:
+            stopped = datetime.strptime(pk["stop_time"], "%d.%m.%Y %H:%M").replace(tzinfo=MSK)
+        except (TypeError, ValueError):
+            pass
+        if stopped and timedelta(0) <= datetime.now(MSK) - stopped < timedelta(seconds=MANUAL_STOP_GRACE_S):
+            info["note"] = f"пакет остановили вручную в {stopped:%H:%M}, ждём {MANUAL_STOP_GRACE_S // 60} мин"
+            log(f"№{num}: пакет остановлен вручную в {stopped:%H:%M}, жду")
+            return info
+        return publish_packet(cab, num, rbc_id, pk, new if changes else pk["rows"], changes, allowed,
+                              our, st, info, was_running=False)
+
+    if not all_changes:
+        info["in_sync"] = True
+        return info
+    if not changes:
         return info
     lw = st.get("last_write")
     if lw and (datetime.now(timezone.utc) - datetime.fromisoformat(lw)).total_seconds() < MIN_WRITE_GAP_S:
         info["note"] = "недавно писали, ждём публикации"
         return info
-    log(f"№{num}: обновляю РБК: " + "; ".join(changes))
+    return publish_packet(cab, num, rbc_id, pk, new, changes, allowed, our, st, info, was_running=True)
+
+
+def publish_packet(cab, num, rbc_id, pk, rows, changes, allowed, our, st, info, was_running):
+    what = "; ".join(changes) if changes else "курсы те же"
+    log(f"№{num}: {'обновляю' if was_running else 'запускаю пакет (был остановлен)'} РБК: {what}")
     if DRY:
         info["note"] = "dry-run"
         return info
 
     old_packet = pk["packet_id"]
-    cab.stop(rbc_id, old_packet)
+    if was_running:
+        cab.stop(rbc_id, old_packet)
     started = False
     try:
-        new_packet = cab.save(rbc_id, new)
+        new_packet = cab.save(rbc_id, rows) if changes else old_packet
         r = cab.start(rbc_id, new_packet)
         started = True
+    except rbc.RbcError as e:
+        if "working hours" in str(e) and not was_running:
+            # касса по режиму РБК ещё/уже закрыта — просто попробуем в следующий прогон
+            info["note"] = "РБК не даёт запустить: касса вне рабочих часов"
+            log(f"№{num}: РБК: касса вне рабочих часов, запущу позже")
+            return info
+        raise
     finally:
-        if not started:
+        if not started and was_running:
             # сохранить не вышло — возвращаем прежний пакет в эфир, чтобы касса не пропала с РБК
             try:
                 cab.start(rbc_id, old_packet)
@@ -286,10 +320,12 @@ def sync_branch(cab, num, rbc_id, our, state):
     # «правка пакета» = момент курса, который мы перенесли, а не время записи: API Юнистрима
     # показывает новый курс с опозданием ~15 мин (19.11: поставлен в 14:18, в API к 14:33),
     # и курс, поставленный за минуту до нашей записи, иначе считался бы «старше РБК»
-    written_at = max(datetime.fromisoformat(our[c]["lastUpdated"]) for c in allowed if our[c].get("lastUpdated"))
-    st["cab_fp"], st["cab_changed_at"] = _fp(after["rows"]), written_at.astimezone(timezone.utc).isoformat(timespec="seconds")
-    st["last_result"] = ("ok: " if ok else "не сошлось: ") + "; ".join(changes)
-    info.update(last_write=st["last_write"], last_result=st["last_result"],
+    stamps = [datetime.fromisoformat(our[c]["lastUpdated"]) for c in allowed if our[c].get("lastUpdated")]
+    st["cab_fp"] = _fp(after["rows"])
+    if stamps:
+        st["cab_changed_at"] = max(stamps).astimezone(timezone.utc).isoformat(timespec="seconds")
+    st["last_result"] = ("ok: " if ok else "не сошлось: ") + ("" if was_running else "запуск пакета; ") + what
+    info.update(last_write=st["last_write"], last_result=st["last_result"], note=None,
                 running=after["running"], stop_time=r.get("time"), in_sync=ok, pending=left)
     SYNC_LOG.parent.mkdir(parents=True, exist_ok=True)
     fresh = not SYNC_LOG.exists()
@@ -297,7 +333,8 @@ def sync_branch(cab, num, rbc_id, our, state):
         w = csv.writer(f)
         if fresh:
             w.writerow(["at_utc", "branch", "rbc_id", "result", "changes"])
-        w.writerow([st["last_write"], num, rbc_id, "ok" if ok else "mismatch", "; ".join(changes)])
+        w.writerow([st["last_write"], num, rbc_id, "ok" if ok else "mismatch",
+                    ("" if was_running else "start; ") + what])
     if not ok:
         raise rbc.RbcError(f"№{num}: после записи в РБК пакет не совпал: running={after['running']}, осталось {left}")
     log(f"№{num}: РБК обновлён, пакет запущен до {r.get('time')}")
