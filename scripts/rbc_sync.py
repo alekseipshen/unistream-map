@@ -119,6 +119,11 @@ def record_history(state, branches, rates):
             new = [r.get("buyRate"), r.get("sellRate"), r.get("lastUpdated")]
             old = last.get(key)
             if old != new:
+                # Откат курса на сайте (20.11.2026, №281: в 14:33 поставили 84.20, к 14:50 сайт
+                # вернул 84.30 с утренним lastUpdated 09:45) — это тоже смена, хотя её время
+                # «в прошлом». Запоминаем, когда мы её увидели, иначе РБК остался бы на 84.20.
+                if old and old[2] and new[2] and new[2] < old[2]:
+                    state.setdefault("rollback_at", {})[key] = obs
                 rows.append({"observed_at_utc": obs, "branch": num, "kind": kind, "pos_id": pos,
                              "currency": cur, "buy": new[0], "sell": new[1], "last_updated": new[2],
                              "prev_buy": old[0] if old else "", "prev_sell": old[1] if old else "",
@@ -210,6 +215,12 @@ def _fp(rows):
     return "|".join(f"{r['currency_id']}:{r['summa']}:{fmt(r['bid'] or 0)}:{fmt(r['ask'] or 0)}" for r in rows)
 
 
+def changed_on_site(last_updated, rollback_at=None):
+    """Когда валюта сменилась на сайте: lastUpdated или момент, когда мы увидели откат."""
+    t = datetime.fromisoformat(last_updated)
+    return max(t, datetime.fromisoformat(rollback_at)) if rollback_at else t
+
+
 def uni_changed_at(our):
     ts = [datetime.fromisoformat(r["lastUpdated"]) for r in our.values() if r.get("lastUpdated")]
     return max(ts) if ts else None
@@ -245,8 +256,9 @@ def sync_branch(cab, num, rbc_id, our, state):
     cab_at = datetime.fromisoformat(st["cab_changed_at"])
     info["cab_changed_at"] = st["cab_changed_at"]
     # по каждой валюте: переписываем только те, что сменились на сайте позже правки пакета
+    rb = state.get("rollback_at", {})
     allowed = {c for c, r in our.items()
-               if r.get("lastUpdated") and datetime.fromisoformat(r["lastUpdated"]) > cab_at}
+               if r.get("lastUpdated") and changed_on_site(r["lastUpdated"], rb.get(f"{num}:{c}")) > cab_at}
 
     all_changes = desired_rows(pk["rows"], our)[1]
     new, changes, problems = desired_rows(pk["rows"], our, allowed)
@@ -449,9 +461,24 @@ def main():
     if changed and "--no-publish" not in sys.argv and not DRY:
         import publish
         publish.main(message="Auto: RBC status")
+    # разовый сбой РБК (504 от шлюза) проходит к следующему прогону через 5 минут — алертим
+    # со второго подряд, а после алерта сообщаем о восстановлении
+    streak = state.get("fail_streak", 0)
     if failures:
-        alert("Unistream map: автообновление РБК — " + " | ".join(failures)[:600])
-        sys.exit(1)
+        state["fail_streak"] = streak + 1
+        if not DRY:
+            STATE.write_text(json.dumps(state, ensure_ascii=False))
+        log("сбой: " + " | ".join(failures))
+        if streak + 1 >= 2:
+            alert(f"Unistream map: автообновление РБК — сбой {streak + 1}-й прогон подряд: "
+                  + " | ".join(failures)[:600])
+            sys.exit(1)
+        return
+    if streak >= 2:
+        alert("Unistream map: автообновление РБК снова работает")
+    if streak and not DRY:
+        state["fail_streak"] = 0
+        STATE.write_text(json.dumps(state, ensure_ascii=False))
 
 
 if __name__ == "__main__":

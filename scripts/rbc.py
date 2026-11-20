@@ -20,6 +20,8 @@ import re
 import urllib.parse
 import urllib.request
 import http.cookiejar
+import time
+import urllib.error
 from pathlib import Path
 
 BASE = "https://cash.rbc.ru"
@@ -30,6 +32,25 @@ ENV = Path(__file__).resolve().parent.parent / ".env"
 
 class RbcError(Exception):
     pass
+
+
+TRANSIENT = (502, 503, 504, 429)
+BACKOFF = (5, 15, 30)        # 20.11.2026 15:05: разовый 504 Gateway Time-out от Qrator — к повтору проходит
+
+
+def _open(opener_open, *args, retry=True, **kw):
+    """urlopen с повторами на временных сбоях РБК (5xx шлюза, 429, обрыв сети)."""
+    for i, pause in enumerate((0,) + (BACKOFF if retry else ())):
+        if pause:
+            time.sleep(pause)
+        try:
+            return opener_open(*args, **kw)
+        except urllib.error.HTTPError as e:
+            if e.code not in TRANSIENT or i == (len(BACKOFF) if retry else 0):
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if i == (len(BACKOFF) if retry else 0):
+                raise
 
 
 def _creds():
@@ -45,7 +66,7 @@ def public_info(bank_id, timeout=20):
     """Что сейчас видно на РБК: {code: {amount: (buy, sell)}}, имя, время публикации."""
     req = urllib.request.Request(f"{BASE}/cash/json/cash_bank_info/?bank_id={bank_id}",
                                  headers={"User-Agent": UA, "Accept": "application/json"})
-    d = json.load(urllib.request.urlopen(req, timeout=timeout))
+    d = json.load(_open(urllib.request.urlopen, req, timeout=timeout))
     bank = d.get("bank") or {}
     quotes = {}
     for rows in (bank.get("quotations") or {}).values():
@@ -73,15 +94,17 @@ class Cabinet:
     def _get(self, url, params=None):
         if params:
             url += "?" + urllib.parse.urlencode(params)
-        return self.op.open(url, timeout=self.timeout).read().decode("utf-8", "replace")
+        # GET-вызовы кабинета (чтение пакета, stop/start) повторять безопасно
+        return _open(self.op.open, url, timeout=self.timeout).read().decode("utf-8", "replace")
 
-    def _post(self, url, data):
+    def _post(self, url, data, retry=False):
+        # save_packet не повторяем вслепую: при сбое sync_branch перезапускает прежний пакет
         body = urllib.parse.urlencode(data).encode()
-        return self.op.open(url, data=body, timeout=self.timeout).read().decode("utf-8", "replace")
+        return _open(self.op.open, url, data=body, timeout=self.timeout, retry=retry).read().decode("utf-8", "replace")
 
     def login(self):
         login, pw = _creds()
-        resp = self._post(BASE + "/cash/json/cash_login/", {"login": login, "passwd": pw})
+        resp = self._post(BASE + "/cash/json/cash_login/", {"login": login, "passwd": pw}, retry=True)
         if not any(c.name == "cash_session" for c in self.jar):
             raise RbcError(f"вход в кабинет РБК не удался: {resp[:200]}")
         return self
