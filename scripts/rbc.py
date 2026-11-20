@@ -56,6 +56,8 @@ def public_info(bank_id, timeout=20):
             quotes.setdefault(pair[:3], {})[float(r.get("amount") or 1)] = (r.get("buy"), r.get("sell"))
     info = bank.get("info") or {}
     return {"quotes": quotes, "name": info.get("bank_name"), "active": info.get("is_active"),
+            # режим работы кассы, по которому РБК пускает пакет: [{week_day 1=пн, time_start, time_end}]
+            "work": bank.get("work") or [],
             "published": bank.get("dt_last_published") or d.get("dt_last_published"),
             "raw_keys": sorted(bank.keys())}
 

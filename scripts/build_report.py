@@ -57,8 +57,8 @@ def bank_fee(bank):
     if "трансстрой" in k:
         return {"sell": {"USD": 1.0}, "note": "+1 ₽ к продаже USD за доллары нового образца"}
     if "камком" in k:
-        return {"sell": {c: 1.9 for c in ("USD", "EUR", "GBP", "CHF")},
-                "note": "+1,9 ₽ к продаже USD/EUR/GBP/CHF и 200 ₽ за любую операцию"}
+        return {"sell": {"USD": 1.9, "EUR": 0.9},   # уточнил Игорь 20.11.2026
+                "note": "+1,9 ₽ к продаже USD, +0,9 ₽ к продаже EUR и 200 ₽ за любую операцию"}
     return None
 
 

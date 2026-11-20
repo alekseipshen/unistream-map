@@ -270,6 +270,12 @@ def sync_branch(cab, num, rbc_id, our, state):
                    for r in our.values()):
             info["note"] = "пакет остановлен, сегодняшнего курса на сайте ещё нет"
             return info
+        # у касс разный режим работы (253 с 9:30, 196 с 10:00, 011 по пт-сб до 23:00), и РБК
+        # пускает пакет только в эти часы — включаем с открытия кассы, после закрытия не трогаем
+        hours = open_hours(rbc_id)
+        if hours is None:
+            info["note"] = "касса по режиму РБК сейчас закрыта"
+            return info
         # пакет только что остановил человек (правит руками в кабинете) — не мешаем
         stopped = None
         try:
@@ -293,6 +299,28 @@ def sync_branch(cab, num, rbc_id, our, state):
         info["note"] = "недавно писали, ждём публикации"
         return info
     return publish_packet(cab, num, rbc_id, pk, new, changes, allowed, our, st, info, was_running=True)
+
+
+def open_hours(rbc_id, now=None):
+    """(open, close) сегодня по режиму кассы на РБК, если касса сейчас открыта, иначе None.
+    За 5 минут до закрытия уже не включаем: РБК всё равно снимет пакет."""
+    now = now or datetime.now(MSK)
+    try:
+        work = rbc.public_info(rbc_id)["work"]
+    except Exception:                   # noqa: BLE001 — нет данных: пусть решит сам РБК
+        return (now.time(), now.time())
+    for w in work:
+        if int(w.get("week_day", 0)) != now.isoweekday():
+            continue
+        try:
+            o = datetime.strptime(w["time_start"], "%H:%M").time()
+            c = datetime.strptime(w["time_end"], "%H:%M").time()
+        except (KeyError, ValueError):
+            continue
+        close_soon = (datetime.combine(now.date(), c) - timedelta(minutes=5)).time()
+        if o <= now.time() < close_soon:
+            return (o, c)
+    return None
 
 
 def publish_packet(cab, num, rbc_id, pk, rows, changes, allowed, our, st, info, was_running):

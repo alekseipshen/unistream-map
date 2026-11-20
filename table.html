@@ -139,8 +139,8 @@ function bankFee(bank) {
   if (k.includes("трансстрой"))
     return { sell: { USD: 1 }, note: "+1 ₽ к курсу продажи USD за подбор долларов нового образца" };
   if (k.includes("камком"))
-    return { sell: { USD: 1.9, EUR: 1.9, GBP: 1.9, CHF: 1.9 }, opFee: 200,
-               note: "+1,9 ₽ к курсу продажи USD/EUR/GBP/CHF и 200 ₽ комиссия за любую операцию" };
+    return { sell: { USD: 1.9, EUR: 0.9 }, opFee: 200,   // уточнил Игорь 20.11.2026
+               note: "+1,9 ₽ к продаже USD, +0,9 ₽ к продаже EUR и 200 ₽ комиссия за любую операцию" };
   return null;
 }
 function withFees(bank, rates) {
