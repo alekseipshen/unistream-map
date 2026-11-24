@@ -133,7 +133,7 @@ python3 scripts/collect_osm_poi.py    # раз в месяц-два
 
 ## РБК (cash.rbc.ru): сверка и автообновление
 
-- `scripts/rbc_sync.py`, таймер `unistream-rbc.timer` на Hetzner, каждые 5 мин 06:00–22:55 МСК.
+- `scripts/rbc_sync.py`, таймер `unistream-rbc.timer` на Hetzner, каждые 5 мин 08:30–22:00 МСК (валютные операции банка, решение Игоря 24.11.2026).
 - **История наших курсов**: все наши отделения (16 + дежурные), в CSV пишется только изменение:
   `/root/My-Digital-Brain/Projects/unistream-history/our_rates.csv` (приватное репо, не этот публичный).
   `last_updated` = когда курс поставили во внутренней программе, `observed_at_utc` = когда он появился в API.
