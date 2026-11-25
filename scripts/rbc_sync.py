@@ -35,10 +35,12 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import rbc  # noqa: E402
 
-SYNC = {"196",                       # пилот 19.11; 20.11 папа попросил ещё 11 касс
-        "023", "027", "044", "098", "189", "198", "207", "211", "227", "253", "281", "286"}
+SYNC = {"196",                       # пилот 19.11; 20.11 ещё 12 касс; 25.11 011 и 295
+        "011", "023", "027", "044", "098", "189", "198", "207", "211", "227", "253", "281", "286", "295"}
 TIER_STEP = 0.10                     # строки «от 10 001»: на 10 коп. лучше основного курса
 MAX_JUMP = 0.08                      # больше 8% за раз — не верим, не пишем, алертим
+MAX_JUMP_MIN_RUB = 0.5               # …но только если это и больше 50 коп.: у тенге 0.15 → 0.10 = 33%
+MORNING_START = datetime.strptime("10:00", "%H:%M").time()
 MIN_WRITE_GAP_S = 180                # не чаще раза в 3 мин на отделение
 MANUAL_STOP_GRACE_S = 600            # пакет остановили руками — 10 мин не вмешиваемся
 HEARTBEAT_EVERY_S = 25 * 60          # чтобы не гонять пересборку Pages каждые 5 минут
@@ -201,7 +203,7 @@ def desired_rows(rows, our, allowed=None):
             else:
                 old_b, old_s = float(r["bid"] or 0), float(r["ask"] or 0)
                 for o, n in ((old_b, buy), (old_s, sell)):
-                    if o and abs(n - o) / o > MAX_JUMP:
+                    if o and abs(n - o) / o > MAX_JUMP and abs(n - o) > MAX_JUMP_MIN_RUB:
                         problems.append(f"{code}: скачок {o} → {n} больше {int(MAX_JUMP * 100)}%")
                 if fmt(old_b) != fmt(buy) or fmt(old_s) != fmt(sell):
                     changes.append(f"{code}{'' if float(r['summa'] or 1) <= 1000 else ' от ' + str(int(float(r['summa'])))}: "
@@ -284,6 +286,11 @@ def sync_branch(cab, num, rbc_id, our, state):
             return info
         # у касс разный режим работы (253 с 9:30, 196 с 10:00, 011 по пт-сб до 23:00), и РБК
         # пускает пакет только в эти часы — включаем с открытия кассы, после закрытия не трогаем
+        # с 25.11.2026 по решению руководства все кассы выставляются на РБК не раньше 10:00,
+        # даже если сегодняшний курс появился на сайте раньше — единообразно
+        if datetime.now(MSK).time() < MORNING_START:
+            info["note"] = f"утренний запуск не раньше {MORNING_START:%H:%M}"
+            return info
         hours = open_hours(rbc_id)
         if hours is None:
             info["note"] = "касса по режиму РБК сейчас закрыта"
