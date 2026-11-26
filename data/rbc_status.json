@@ -474,13 +474,14 @@
    "rbc_id": 104025
   }
  },
- "heartbeat": "2026-11-26T15:55:26+00:00",
+ "heartbeat": "2026-11-26T16:05:30+00:00",
  "sync": {
   "011": {
    "cab_changed_at": "2026-11-26T15:33:00+00:00",
    "in_sync": true,
-   "last_result": "ok: USD: 83.00/84.29 → 83.00/84.20",
-   "last_write": "2026-11-26T15:50:25+00:00",
+   "last_result": "ok: USD: 83.00/84.20 → 83.00/84.00",
+   "last_write": "2026-11-26T16:05:24+00:00",
+   "note": null,
    "pending": [],
    "running": true,
    "stop_time": "26.11.2026 22:00"
@@ -605,8 +606,9 @@
   "295": {
    "cab_changed_at": "2026-11-26T15:33:00+00:00",
    "in_sync": true,
-   "last_result": "ok: USD: 83.00/84.29 → 83.00/84.20",
-   "last_write": "2026-11-26T15:50:30+00:00",
+   "last_result": "ok: USD: 83.00/84.20 → 83.00/84.00",
+   "last_write": "2026-11-26T16:05:30+00:00",
+   "note": null,
    "pending": [],
    "running": true,
    "stop_time": "26.11.2026 22:30"
